@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# PhonicsFlow
+.env.local
+.env.*.local
+assets/sounds/*.mp3
