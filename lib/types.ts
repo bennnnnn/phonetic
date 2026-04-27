@@ -47,6 +47,7 @@ export type UserProfile = {
   preferred_accent: 'american' | 'british'
   daily_goal: 1 | 2 | 3 | 5
   reminder_time: string
+  native_language: string
 }
 
 export type WordStatus = 'unseen' | 'mastered' | 'skipped'
