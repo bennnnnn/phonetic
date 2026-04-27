@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhonicsFlow — All Screens</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a1a; font-family: -apple-system, sans-serif; padding: 40px 20px; }
+  h1 { color: #fff; text-align: center; font-size: 28px; font-weight: 500; margin-bottom: 8px; }
+  .subtitle { color: #888; text-align: center; font-size: 14px; margin-bottom: 48px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; }
+  .screen-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .screen-label { color: #888; font-size: 12px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+  .screen-name { color: #fff; font-size: 14px; font-weight: 500; }
+  .phone { width: 280px; background: #111; border-radius: 44px; padding: 10px; box-shadow: 0 0 0 1px #333, 0 20px 60px rgba(0,0,0,0.5); }
+  .screen { border-radius: 36px; overflow: hidden; height: 560px; display: flex; flex-direction: column; position: relative; }
+  .notch { width: 90px; height: 24px; background: #111; border-radius: 0 0 16px 16px; position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 10; }
+
+  /* ── COLORS ── */
+  .bg-teal { background: #1D9E75; }
+  .bg-white { background: #fff; }
+  .bg-neutral { background: #F1EFE8; }
+  .c-teal { color: #1D9E75; }
+  .c-dark { color: #2C2C2A; }
+  .c-muted { color: #888780; }
+  .c-white { color: #fff; }
+  .c-light-teal { color: #9FE1CB; }
+  .c-consonant { color: #B4B2A9; }
+
+  /* ── SHARED ── */
+  .fw500 { font-weight: 500; }
+  .tabbar { background: #fff; padding: 8px 0 14px; display: flex; justify-content: space-around; flex-shrink: 0; border-top: 0.5px solid #E1F5EE; }
+  .ti { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tbar { width: 20px; height: 3px; border-radius: 2px; background: #D3D1C7; }
+  .tbar.on { background: #1D9E75; }
+  .tdot { width: 4px; height: 4px; border-radius: 50%; background: #1D9E75; }
+  .tlbl { font-size: 9px; color: #888780; font-weight: 500; }
+  .tlbl.on { color: #1D9E75; }
+  .steps-row { display: flex; gap: 4px; }
+  .seg { flex: 1; height: 4px; border-radius: 2px; background: #D3D1C7; }
+  .seg.done { background: #1D9E75; }
+  .seg.active { background: #5DCAA5; }
+  .pill { background: #E1F5EE; border-radius: 20px; padding: 5px 12px; font-size: 11px; font-weight: 500; color: #085041; display: inline-flex; align-items: center; gap: 5px; }
+  .btn-teal { background: #1D9E75; color: #fff; border: none; border-radius: 14px; padding: 13px; font-size: 14px; font-weight: 500; width: 100%; text-align: center; }
+  .btn-ghost { background: #F1EFE8; border: none; border-radius: 14px; padding: 13px; font-size: 14px; font-weight: 500; color: #888780; width: 100%; text-align: center; }
+  .section-lbl { font-size: 10px; font-weight: 500; color: #888780; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 6px; }
+  .card { background: #fff; border-radius: 16px; border: 0.5px solid #D3D1C7; overflow: hidden; }
+  .row { display: flex; align-items: center; padding: 11px 13px; gap: 10px; border-bottom: 0.5px solid #F1EFE8; }
+  .row:last-child { border-bottom: none; }
+  .chevron { width: 5px; height: 5px; border-right: 1.5px solid #B4B2A9; border-top: 1.5px solid #B4B2A9; transform: rotate(45deg); flex-shrink: 0; }
+  .scroll { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .pattern-text { font-family: Georgia, serif; font-weight: 500; letter-spacing: -2px; }
+</style>
+</head>
+<body>
+
+<h1>PhonicsFlow</h1>
+<p class="subtitle">All 14 approved screens — design reference for the agent</p>
+
+<div class="grid">
+
+<!-- ─── SCREEN 1: SPLASH ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 1</div>
+  <div class="screen-name">Splash</div>
+  <div class="phone"><div class="screen bg-teal" style="align-items:center;justify-content:center;gap:14px;">
+    <div class="notch"></div>
+    <div style="width:80px;height:80px;background:#fff;border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:500;color:#1D9E75;font-family:Georgia,serif;">Pf</div>
+    <div style="text-align:center;">
+      <div style="font-size:24px;font-weight:500;color:#fff;letter-spacing:-0.5px;">PhonicsFlow</div>
+      <div style="font-size:12px;color:#9FE1CB;margin-top:4px;">hack the english code</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:32px;">
+      <div style="width:18px;height:4px;background:#fff;border-radius:2px;"></div>
+      <div style="width:6px;height:4px;background:#9FE1CB;border-radius:50%;"></div>
+      <div style="width:6px;height:4px;background:#9FE1CB;border-radius:50%;"></div>
+    </div>
+    <div style="position:absolute;bottom:14px;width:90px;height:4px;background:rgba(255,255,255,0.3);border-radius:2px;"></div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 2: ONBOARDING 1 ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 2</div>
+  <div class="screen-name">Onboarding 1 — Welcome</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="background:#E1F5EE;flex:0 0 230px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-top:18px;">
+      <div class="pattern-text" style="font-size:56px;color:#1D9E75;line-height:1;"><span style="color:#B4B2A9;">_</span>ake</div>
+      <div style="display:flex;gap:7px;">
+        <div style="background:#fff;border:0.5px solid #9FE1CB;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:500;color:#085041;"><span style="color:#B4B2A9;">b</span><span style="color:#1D9E75;">ake</span></div>
+        <div style="background:#fff;border:0.5px solid #9FE1CB;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:500;color:#085041;"><span style="color:#B4B2A9;">c</span><span style="color:#1D9E75;">ake</span></div>
+        <div style="background:#fff;border:0.5px solid #9FE1CB;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:500;color:#085041;"><span style="color:#B4B2A9;">sn</span><span style="color:#1D9E75;">ake</span></div>
+      </div>
+    </div>
+    <div style="flex:1;padding:20px 20px 0;display:flex;flex-direction:column;">
+      <div style="font-size:10px;font-weight:500;color:#1D9E75;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">welcome to phonicsflow</div>
+      <div style="font-size:20px;font-weight:500;color:#2C2C2A;line-height:1.25;margin-bottom:8px;">English has a secret pattern system</div>
+      <div style="font-size:13px;color:#888780;line-height:1.6;flex:1;">Once you see the patterns, you can decode any word — even ones you've never seen before.</div>
+      <div style="display:flex;gap:5px;margin-bottom:12px;">
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#E1F5EE;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#E1F5EE;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#E1F5EE;"></div>
+      </div>
+      <div class="btn-teal" style="margin-bottom:14px;">show me how it works</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 3: ONBOARDING 2 ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 3</div>
+  <div class="screen-name">Onboarding 2 — How it works</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="padding:44px 18px 14px;flex-shrink:0;">
+      <div style="font-size:10px;font-weight:500;color:#1D9E75;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">how it works</div>
+      <div style="font-size:20px;font-weight:500;color:#2C2C2A;">3 steps to decode any word</div>
+    </div>
+    <div style="flex:1;padding:0 18px;display:flex;flex-direction:column;gap:9px;">
+      <div style="background:#E1F5EE;border-radius:14px;padding:13px;display:flex;gap:12px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#1D9E75;flex-shrink:0;">1</div>
+        <div><div style="font-size:13px;font-weight:500;color:#2C2C2A;margin-bottom:2px;">Spot the pattern</div><div style="font-size:11px;color:#888780;">Find the vowel group at the end.</div><div style="margin-top:6px;background:#fff;border-radius:7px;padding:3px 9px;display:inline-block;font-size:13px;font-weight:500;"><span style="color:#B4B2A9;">b</span><span style="color:#1D9E75;">ake</span> <span style="background:#E1F5EE;border-radius:5px;padding:1px 6px;font-size:10px;color:#085041;">/eɪk/</span></div></div>
+      </div>
+      <div style="background:#FAECE7;border-radius:14px;padding:13px;display:flex;gap:12px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#D85A30;flex-shrink:0;">2</div>
+        <div><div style="font-size:13px;font-weight:500;color:#2C2C2A;margin-bottom:2px;">Hear the sound</div><div style="font-size:11px;color:#888780;">Every pattern has one sound. Tap to hear.</div><div style="margin-top:6px;font-size:11px;color:#D85A30;">-ake always says /eɪk/</div></div>
+      </div>
+      <div style="background:#F1EFE8;border-radius:14px;padding:13px;display:flex;gap:12px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#5F5E5A;flex-shrink:0;">3</div>
+        <div><div style="font-size:13px;font-weight:500;color:#2C2C2A;margin-bottom:2px;">Blend and read</div><div style="font-size:11px;color:#888780;">Add your consonant and blend together.</div><div style="margin-top:6px;background:#fff;border-radius:7px;padding:3px 9px;display:inline-block;font-size:13px;font-weight:500;"><span style="color:#B4B2A9;">sn</span><span style="color:#1D9E75;">ake</span> <span style="font-size:11px;color:#888780;">= snake</span></div></div>
+      </div>
+    </div>
+    <div style="padding:14px 18px 0;">
+      <div style="display:flex;gap:5px;margin-bottom:12px;">
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#E1F5EE;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#E1F5EE;"></div>
+      </div>
+      <div class="btn-teal" style="margin-bottom:14px;">got it, keep going</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 4: ONBOARDING 3 ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 4</div>
+  <div class="screen-name">Onboarding 3 — Set Goal</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="padding:44px 18px 14px;flex-shrink:0;">
+      <div style="font-size:10px;font-weight:500;color:#1D9E75;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">set your goal</div>
+      <div style="font-size:20px;font-weight:500;color:#2C2C2A;margin-bottom:4px;">How much do you want to learn?</div>
+      <div style="font-size:12px;color:#888780;">You can always change this later.</div>
+    </div>
+    <div style="flex:1;padding:0 18px;display:flex;flex-direction:column;gap:9px;">
+      <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;"><div style="font-size:18px;">🌱</div><div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#2C2C2A;">Casual</div><div style="font-size:11px;color:#888780;">1 lesson · ~5 min a day</div></div><div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #D3D1C7;"></div></div>
+      <div style="background:#E1F5EE;border:1.5px solid #1D9E75;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;"><div style="font-size:18px;">🔥</div><div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#085041;">Regular</div><div style="font-size:11px;color:#0F6E56;">2 lessons · ~10 min a day</div></div><div style="width:18px;height:18px;border-radius:50%;background:#1D9E75;border:1.5px solid #1D9E75;display:flex;align-items:center;justify-content:center;"><div style="width:6px;height:9px;border-right:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(45deg) translate(-1px,-1px);"></div></div></div>
+      <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;"><div style="font-size:18px;">⚡</div><div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#2C2C2A;">Serious</div><div style="font-size:11px;color:#888780;">3 lessons · ~15 min a day</div></div><div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #D3D1C7;"></div></div>
+      <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:12px;"><div style="font-size:18px;">🏆</div><div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#2C2C2A;">Intense</div><div style="font-size:11px;color:#888780;">5 lessons · ~25 min a day</div></div><div style="width:18px;height:18px;border-radius:50%;border:1.5px solid #D3D1C7;"></div></div>
+    </div>
+    <div style="padding:14px 18px 0;">
+      <div style="display:flex;gap:5px;margin-bottom:12px;">
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#E1F5EE;"></div>
+      </div>
+      <div class="btn-teal" style="margin-bottom:14px;">looks good</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 5: ONBOARDING 4 ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 5</div>
+  <div class="screen-name">Onboarding 4 — Name</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="background:#1D9E75;flex:0 0 200px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding-top:14px;">
+      <div style="width:60px;height:60px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:500;color:#1D9E75;">A</div>
+      <div style="font-size:17px;font-weight:500;color:#fff;">Hey, <span style="color:#9FE1CB;">Abebe!</span></div>
+      <div style="font-size:12px;color:#9FE1CB;">ready to crack the code?</div>
+    </div>
+    <div style="flex:1;padding:20px 18px 0;display:flex;flex-direction:column;">
+      <div style="font-size:10px;font-weight:500;color:#1D9E75;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">almost there</div>
+      <div style="font-size:19px;font-weight:500;color:#2C2C2A;margin-bottom:16px;">What should we call you?</div>
+      <div style="border:1.5px solid #9FE1CB;border-radius:12px;padding:12px 14px;font-size:15px;color:#2C2C2A;margin-bottom:6px;">Abebe</div>
+      <div style="font-size:11px;color:#888780;flex:1;">We'll use this to personalise your experience.</div>
+      <div style="display:flex;gap:5px;margin-bottom:12px;">
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+        <div style="flex:1;height:4px;border-radius:2px;background:#1D9E75;"></div>
+      </div>
+      <div class="btn-teal">let's go, Abebe!</div>
+      <div style="font-size:11px;color:#888780;text-align:center;margin-top:7px;margin-bottom:14px;">takes 10 seconds to sign up</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 6: SIGN UP ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 6</div>
+  <div class="screen-name">Sign Up</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="background:#1D9E75;flex:0 0 145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding-top:14px;">
+      <div style="width:40px;height:40px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:#1D9E75;font-family:Georgia,serif;">Pf</div>
+      <div style="font-size:16px;font-weight:500;color:#fff;">PhonicsFlow</div>
+      <div style="font-size:11px;color:#9FE1CB;">free to start · no credit card</div>
+    </div>
+    <div style="flex:1;padding:20px 18px 0;display:flex;flex-direction:column;">
+      <div style="font-size:20px;font-weight:500;color:#2C2C2A;margin-bottom:3px;">Create your account</div>
+      <div style="font-size:12px;color:#888780;margin-bottom:18px;">Join in seconds.</div>
+      <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:20px;height:20px;border-radius:50%;background:#FAECE7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#D85A30;flex-shrink:0;">G</div>
+        <div style="font-size:14px;font-weight:500;color:#2C2C2A;">Continue with Google</div>
+      </div>
+      <div style="background:#E1F5EE;border:1.5px solid #E1F5EE;border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <div style="width:20px;height:20px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✉️</div>
+        <div style="font-size:14px;font-weight:500;color:#085041;">Continue with email</div>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="font-size:11px;color:#888780;text-align:center;margin-bottom:5px;">already have an account? <span style="color:#1D9E75;font-weight:500;">sign in</span></div>
+      <div style="font-size:10px;color:#B4B2A9;text-align:center;margin-bottom:14px;">By continuing you agree to our <span style="color:#888780;">Terms</span> and <span style="color:#888780;">Privacy Policy</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 6b: LOGIN ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 6b</div>
+  <div class="screen-name">Login</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="background:#1D9E75;flex:0 0 145px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding-top:14px;">
+      <div style="width:40px;height:40px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:500;color:#1D9E75;font-family:Georgia,serif;">Pf</div>
+      <div style="font-size:16px;font-weight:500;color:#fff;">PhonicsFlow</div>
+      <div style="font-size:11px;color:#9FE1CB;">welcome back</div>
+    </div>
+    <div style="flex:1;padding:20px 18px 0;display:flex;flex-direction:column;">
+      <div style="font-size:20px;font-weight:500;color:#2C2C2A;margin-bottom:3px;">Sign in</div>
+      <div style="font-size:12px;color:#888780;margin-bottom:18px;">Good to see you again.</div>
+
+      <!-- Google primary -->
+      <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:13px;padding:13px 15px;display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:20px;height:20px;border-radius:50%;background:#FAECE7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#D85A30;flex-shrink:0;">G</div>
+        <div style="font-size:14px;font-weight:500;color:#2C2C2A;">Continue with Google</div>
+      </div>
+
+      <!-- divider -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="flex:1;height:0.5px;background:#D3D1C7;"></div>
+        <div style="font-size:11px;color:#B4B2A9;">or use email</div>
+        <div style="flex:1;height:0.5px;background:#D3D1C7;"></div>
+      </div>
+
+      <!-- email field -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:500;color:#5F5E5A;margin-bottom:5px;">Email</div>
+        <div style="border:1.5px solid #E1F5EE;border-radius:12px;padding:12px 14px;font-size:14px;color:#2C2C2A;">abebe@example.com</div>
+      </div>
+
+      <!-- password field -->
+      <div style="margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:500;color:#5F5E5A;margin-bottom:5px;">Password</div>
+        <div style="border:1.5px solid #E1F5EE;border-radius:12px;padding:12px 14px;font-size:14px;color:#B4B2A9;display:flex;justify-content:space-between;">
+          <span>••••••••</span><span style="font-size:11px;color:#888780;">show</span>
+        </div>
+      </div>
+
+      <!-- forgot -->
+      <div style="font-size:12px;color:#1D9E75;font-weight:500;text-align:right;margin-bottom:18px;">forgot password?</div>
+
+      <div class="btn-teal" style="margin-bottom:10px;">sign in</div>
+      <div style="flex:1;"></div>
+      <div style="font-size:12px;color:#888780;text-align:center;margin-bottom:14px;">don't have an account? <span style="color:#1D9E75;font-weight:500;">sign up</span></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 7: HOME ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 7</div>
+  <div class="screen-name">Home</div>
+  <div class="phone"><div class="screen bg-neutral">
+    <div class="notch"></div>
+    <div style="background:#fff;padding:40px 18px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:18px;font-weight:500;color:#2C2C2A;">Good morning, <span style="color:#1D9E75;">Abebe</span></div>
+        <div style="width:34px;height:34px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#085041;">A</div>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <div class="pill">🔥 7 day streak</div>
+        <div class="pill">340 XP</div>
+        <div class="pill">12 words</div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div style="background:#1D9E75;border-radius:16px;padding:14px;">
+        <div style="font-size:10px;color:#9FE1CB;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">lesson in progress</div>
+        <div style="font-size:16px;font-weight:500;color:#fff;margin-bottom:2px;">The -ake pattern</div>
+        <div style="font-size:12px;color:#9FE1CB;margin-bottom:10px;">Step 2 of 4 · Word bank</div>
+        <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:4px;margin-bottom:10px;"><div style="background:#fff;border-radius:4px;height:4px;width:50%;"></div></div>
+        <div style="background:#fff;border:none;border-radius:9px;padding:8px 14px;font-size:12px;font-weight:500;color:#085041;display:inline-block;">resume lesson</div>
+      </div>
+      <div style="font-size:10px;font-weight:500;color:#888780;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:6px;">word families</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#fff;border-radius:14px;padding:12px 13px;display:flex;align-items:center;gap:11px;border:0.5px solid #D3D1C7;">
+          <div style="width:46px;height:46px;background:#E1F5EE;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:#085041;font-family:Georgia,serif;flex-shrink:0;">-ake</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#2C2C2A;margin-bottom:3px;">The -ake pattern</div><div style="font-size:11px;color:#888780;margin-bottom:5px;">15 words · long vowel A</div><div style="background:#F1EFE8;border-radius:3px;height:3px;"><div style="background:#1D9E75;border-radius:3px;height:3px;width:60%;"></div></div></div>
+          <div style="background:#E1F5EE;border-radius:20px;padding:3px 8px;font-size:10px;font-weight:500;color:#085041;">level 1</div>
+        </div>
+        <div style="background:#fff;border-radius:14px;padding:12px 13px;display:flex;align-items:center;gap:11px;border:0.5px solid #D3D1C7;">
+          <div style="width:46px;height:46px;background:#E1F5EE;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:#085041;font-family:Georgia,serif;flex-shrink:0;">-ight</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#2C2C2A;margin-bottom:3px;">The -ight pattern</div><div style="font-size:11px;color:#888780;margin-bottom:5px;">12 words · silent gh</div><div style="background:#F1EFE8;border-radius:3px;height:3px;"></div></div>
+          <div style="background:#E1F5EE;border-radius:20px;padding:3px 8px;font-size:10px;font-weight:500;color:#085041;">level 1</div>
+        </div>
+        <div style="background:#fff;border-radius:14px;padding:12px 13px;display:flex;align-items:center;gap:11px;border:0.5px solid #D3D1C7;opacity:0.5;">
+          <div style="width:46px;height:46px;background:#F1EFE8;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:#B4B2A9;font-family:Georgia,serif;flex-shrink:0;">-ough</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#B4B2A9;">The -ough pattern</div><div style="font-size:11px;color:#B4B2A9;">Complete level 2 to unlock</div></div>
+          <div style="width:14px;height:16px;border:2px solid #B4B2A9;border-radius:3px;position:relative;"><div style="position:absolute;width:8px;height:8px;border:2px solid #B4B2A9;border-radius:50%;top:-7px;left:1px;"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="ti"><div class="tbar on"></div><div class="tdot"></div><div class="tlbl on">home</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">progress</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">leagues</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">profile</div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 8: WORD LEARNING ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 8</div>
+  <div class="screen-name">Lesson — Word Learning</div>
+  <div class="phone"><div class="screen bg-neutral">
+    <div class="notch"></div>
+    <div style="background:#fff;padding:40px 18px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:#F1EFE8;display:flex;align-items:center;justify-content:center;">◂</div>
+        <div style="font-size:13px;font-weight:500;color:#2C2C2A;">The -ake pattern</div>
+        <div style="background:#F1EFE8;border-radius:20px;padding:4px 10px;font-size:11px;color:#888780;">3 of 8</div>
+      </div>
+      <div class="steps-row">
+        <div class="seg done"></div><div class="seg active"></div><div class="seg"></div><div class="seg"></div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 18px;gap:13px;">
+      <div style="background:#fff;border-radius:22px;width:100%;padding:24px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;border:0.5px solid #D3D1C7;">
+        <div class="pattern-text" style="font-size:48px;"><span style="color:#B4B2A9;">b</span><span style="color:#1D9E75;">ake</span></div>
+        <div style="font-size:15px;color:#888780;">/beɪk/</div>
+        <div style="font-size:12px;color:#5F5E5A;text-align:center;">to cook food in an oven using dry heat</div>
+        <div style="width:44px;height:44px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:18px;">🔊</div>
+      </div>
+      <div style="display:flex;gap:11px;width:100%;">
+        <div class="btn-ghost" style="flex:1;">skip for now</div>
+        <div class="btn-teal" style="flex:2;">got it ✓</div>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:18px 18px 0 0;padding:12px 14px 0;flex-shrink:0;">
+      <div style="font-size:10px;font-weight:500;color:#888780;letter-spacing:0.07em;text-transform:uppercase;margin-bottom:8px;">up next — 5 remaining</div>
+      <div style="display:flex;gap:7px;overflow-x:auto;padding-bottom:14px;">
+        <div style="background:#1D9E75;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:500;color:#fff;white-space:nowrap;">bake</div>
+        <div style="background:#E1F5EE;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:500;color:#085041;white-space:nowrap;">lake ✓</div>
+        <div style="background:#F1EFE8;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:500;color:#5F5E5A;white-space:nowrap;">cake</div>
+        <div style="background:#F1EFE8;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:500;color:#5F5E5A;white-space:nowrap;">rake</div>
+        <div style="background:#F1EFE8;border-radius:20px;padding:6px 13px;font-size:12px;font-weight:500;color:#B4B2A9;text-decoration:line-through;white-space:nowrap;">make</div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 9: SENTENCES ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 9</div>
+  <div class="screen-name">Lesson — Sentences</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="padding:40px 18px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:#F1EFE8;display:flex;align-items:center;justify-content:center;">◂</div>
+        <div style="font-size:13px;font-weight:500;color:#2C2C2A;">The -ake pattern</div>
+        <div style="background:#F1EFE8;border-radius:20px;padding:4px 10px;font-size:11px;color:#888780;">2 of 5</div>
+      </div>
+      <div class="steps-row">
+        <div class="seg done"></div><div class="seg done"></div><div class="seg active"></div><div class="seg"></div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 18px;gap:13px;">
+      <div style="background:#F1EFE8;border-radius:20px;width:100%;padding:20px 18px;display:flex;flex-direction:column;align-items:center;gap:13px;">
+        <div style="font-size:10px;font-weight:500;color:#888780;text-transform:uppercase;letter-spacing:0.07em;">sentence 2 of 5</div>
+        <div style="font-size:18px;color:#2C2C2A;line-height:1.6;text-align:center;">We swam in the cool <span style="color:#1D9E75;font-weight:500;border-bottom:2px solid #9FE1CB;">lake</span> at sunrise.</div>
+        <div style="background:#fff;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:500;color:#0F6E56;display:flex;align-items:center;gap:6px;">🔊 hear the sentence</div>
+        <div style="background:#E1F5EE;border-radius:10px;padding:9px 13px;width:100%;font-size:12px;"><span style="font-weight:500;color:#085041;">lake</span> · a body of water surrounded by land</div>
+        <div style="display:flex;gap:5px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:#1D9E75;"></div>
+          <div style="width:7px;height:7px;border-radius:50%;background:#1D9E75;"></div>
+          <div style="width:7px;height:7px;border-radius:50%;background:#5DCAA5;"></div>
+          <div style="width:7px;height:7px;border-radius:50%;background:#D3D1C7;"></div>
+          <div style="width:7px;height:7px;border-radius:50%;background:#D3D1C7;"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:11px;width:100%;">
+        <div class="btn-ghost" style="flex:1;">← back</div>
+        <div class="btn-teal" style="flex:2;">next sentence →</div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 10: QUIZ ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 10</div>
+  <div class="screen-name">Lesson — Quiz</div>
+  <div class="phone"><div class="screen bg-white">
+    <div class="notch"></div>
+    <div style="padding:40px 18px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+        <div style="width:30px;height:30px;border-radius:50%;background:#F1EFE8;display:flex;align-items:center;justify-content:center;">◂</div>
+        <div style="font-size:13px;font-weight:500;color:#2C2C2A;">The -ake pattern</div>
+        <div style="background:#F1EFE8;border-radius:20px;padding:4px 10px;font-size:11px;color:#888780;">2 of 5</div>
+      </div>
+      <div class="steps-row">
+        <div class="seg done"></div><div class="seg done"></div><div class="seg done"></div><div class="seg active"></div>
+      </div>
+    </div>
+    <div style="flex:1;padding:12px 18px;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:11px;color:#888780;">score</div>
+        <div style="font-size:12px;font-weight:500;color:#1D9E75;">1 / 5</div>
+      </div>
+      <div style="background:#F1EFE8;border-radius:4px;height:6px;"><div style="background:#1D9E75;border-radius:4px;height:6px;width:20%;"></div></div>
+      <div style="font-size:10px;font-weight:500;color:#888780;text-transform:uppercase;letter-spacing:0.07em;">what does this word mean?</div>
+      <div style="background:#F1EFE8;border-radius:18px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <div class="pattern-text" style="font-size:38px;"><span style="color:#B4B2A9;">l</span><span style="color:#1D9E75;">ake</span></div>
+        <div style="background:#fff;border-radius:20px;padding:6px 13px;font-size:11px;font-weight:500;color:#0F6E56;">🔊 hear it</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#E1F5EE;border:1.5px solid #1D9E75;border-radius:13px;padding:12px 15px;font-size:13px;color:#085041;font-weight:500;">a large body of water ✓</div>
+        <div style="background:#FCEBEB;border:1.5px solid #E24B4A;border-radius:13px;padding:12px 15px;font-size:13px;color:#A32D2D;">a reptile with no legs</div>
+        <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:13px;padding:12px 15px;font-size:13px;color:#2C2C2A;">to cook food in an oven</div>
+        <div style="background:#fff;border:1.5px solid #D3D1C7;border-radius:13px;padding:12px 15px;font-size:13px;color:#2C2C2A;">to stop sleeping</div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 11: LESSON COMPLETE ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 11</div>
+  <div class="screen-name">Lesson Complete 🎉</div>
+  <div class="phone"><div class="screen bg-teal">
+    <div class="notch"></div>
+    <div style="flex:0 0 auto;padding:50px 20px 0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:2;">
+      <div style="background:rgba(255,255,255,0.15);border-radius:20px;padding:4px 13px;font-size:10px;font-weight:500;color:#E1F5EE;letter-spacing:0.08em;text-transform:uppercase;">lesson complete</div>
+      <div style="font-size:26px;font-weight:500;color:#fff;letter-spacing:-0.5px;">You crushed it!</div>
+      <div style="font-size:13px;color:#9FE1CB;">The -ake pattern</div>
+      <div style="width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.3);display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:6px;">
+        <div style="font-size:34px;font-weight:500;color:#fff;line-height:1;">5</div>
+        <div style="font-size:11px;color:#9FE1CB;">out of 5</div>
+      </div>
+      <div style="display:flex;gap:5px;margin-top:6px;">
+        <div style="font-size:22px;">⭐</div><div style="font-size:22px;">⭐</div><div style="font-size:22px;">⭐</div>
+      </div>
+    </div>
+    <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:22px 22px 36px 36px;padding:18px 18px 20px;display:flex;flex-direction:column;gap:12px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+        <div style="background:#F1EFE8;border-radius:13px;padding:11px;"><div style="font-size:20px;font-weight:500;color:#1D9E75;">8</div><div style="font-size:10px;color:#888780;">words mastered</div></div>
+        <div style="background:#F1EFE8;border-radius:13px;padding:11px;"><div style="font-size:20px;font-weight:500;color:#2C2C2A;">7<span style="font-size:12px;color:#888780;"> days</span></div><div style="font-size:10px;color:#888780;">streak kept</div></div>
+      </div>
+      <div style="background:#E1F5EE;border-radius:13px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-size:18px;font-weight:500;color:#085041;">+50 XP</div><div style="font-size:11px;color:#0F6E56;">earned this lesson</div></div>
+        <div><div style="font-size:10px;color:#0F6E56;margin-bottom:3px;text-align:right;">level 3</div><div style="width:72px;background:#9FE1CB;border-radius:4px;height:5px;"><div style="background:#1D9E75;border-radius:4px;height:5px;width:65%;"></div></div></div>
+      </div>
+      <div style="display:flex;gap:9px;">
+        <div class="btn-ghost" style="flex:1;">home</div>
+        <div class="btn-teal" style="flex:2;">next lesson →</div>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 12: PROGRESS ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 12</div>
+  <div class="screen-name">Progress</div>
+  <div class="phone"><div class="screen bg-neutral">
+    <div class="notch"></div>
+    <div style="background:#fff;padding:40px 18px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:18px;font-weight:500;color:#2C2C2A;">your progress</div>
+        <div style="display:flex;background:#F1EFE8;border-radius:20px;padding:3px;">
+          <div style="padding:4px 10px;border-radius:16px;background:#fff;font-size:11px;font-weight:500;color:#2C2C2A;">week</div>
+          <div style="padding:4px 10px;font-size:11px;font-weight:500;color:#888780;">month</div>
+          <div style="padding:4px 10px;font-size:11px;font-weight:500;color:#888780;">all</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;"><div class="pill">🔥 7 day streak</div><div class="pill">340 XP total</div></div>
+    </div>
+    <div class="scroll">
+      <div style="background:#1D9E75;border-radius:16px;padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+          <div><div style="font-size:28px;font-weight:500;color:#fff;line-height:1;">7</div><div style="font-size:12px;color:#9FE1CB;">day streak</div></div>
+          <div style="background:rgba(255,255,255,0.2);border-radius:20px;padding:4px 11px;font-size:10px;color:#fff;font-weight:500;">personal best</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;">✓</div><div style="font-size:8px;color:#9FE1CB;">Mon</div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;">✓</div><div style="font-size:8px;color:#9FE1CB;">Tue</div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;">✓</div><div style="font-size:8px;color:#9FE1CB;">Wed</div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;">✓</div><div style="font-size:8px;color:#9FE1CB;">Thu</div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;">✓</div><div style="font-size:8px;color:#9FE1CB;">Fri</div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;">✓</div><div style="font-size:8px;color:#9FE1CB;">Sat</div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;color:#1D9E75;font-weight:500;box-shadow:0 0 0 2px rgba(255,255,255,0.4);">✓</div><div style="font-size:8px;color:#fff;font-weight:500;">Sun</div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+        <div style="background:#fff;border-radius:14px;padding:12px;border:0.5px solid #D3D1C7;"><div style="font-size:20px;font-weight:500;color:#1D9E75;">12</div><div style="font-size:10px;color:#888780;">words mastered</div></div>
+        <div style="background:#fff;border-radius:14px;padding:12px;border:0.5px solid #D3D1C7;"><div style="font-size:20px;font-weight:500;color:#1D9E75;">4</div><div style="font-size:10px;color:#888780;">lessons done</div></div>
+        <div style="background:#fff;border-radius:14px;padding:12px;border:0.5px solid #D3D1C7;"><div style="font-size:20px;font-weight:500;color:#2C2C2A;">340<span style="font-size:11px;color:#888780;"> xp</span></div><div style="font-size:10px;color:#888780;">points earned</div></div>
+        <div style="background:#fff;border-radius:14px;padding:12px;border:0.5px solid #D3D1C7;"><div style="font-size:20px;font-weight:500;color:#1D9E75;">92<span style="font-size:11px;color:#888780;">%</span></div><div style="font-size:10px;color:#888780;">quiz accuracy</div></div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:13px;border:0.5px solid #D3D1C7;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;"><div style="font-size:13px;font-weight:500;color:#2C2C2A;">level progress</div><div style="background:#E1F5EE;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:500;color:#085041;">level 3</div></div>
+        <div style="background:#F1EFE8;border-radius:4px;height:7px;margin-bottom:5px;"><div style="background:#1D9E75;border-radius:4px;height:7px;width:65%;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#888780;"><div>340 XP</div><div>500 XP to level 4</div></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">home</div></div>
+      <div class="ti"><div class="tbar on"></div><div class="tdot"></div><div class="tlbl on">progress</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">leagues</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">profile</div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 13: PROFILE ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 13</div>
+  <div class="screen-name">Profile / Settings</div>
+  <div class="phone"><div class="screen bg-neutral">
+    <div class="notch"></div>
+    <div style="background:#1D9E75;padding:40px 18px 16px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:500;color:#1D9E75;flex-shrink:0;">A</div>
+        <div style="flex:1;"><div style="font-size:16px;font-weight:500;color:#fff;">Abebe</div><div style="font-size:11px;color:#9FE1CB;margin-top:2px;">Regular · 2 lessons a day</div></div>
+        <div style="background:rgba(255,255,255,0.2);border-radius:20px;padding:5px 11px;font-size:11px;color:#fff;">edit</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:15px;font-weight:500;color:#fff;">7</div><div style="font-size:9px;color:#9FE1CB;">streak</div></div>
+        <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:15px;font-weight:500;color:#fff;">340</div><div style="font-size:9px;color:#9FE1CB;">XP</div></div>
+        <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:15px;font-weight:500;color:#fff;">12</div><div style="font-size:9px;color:#9FE1CB;">words</div></div>
+        <div style="flex:1;background:rgba(255,255,255,0.15);border-radius:10px;padding:8px;text-align:center;"><div style="font-size:15px;font-weight:500;color:#fff;">3</div><div style="font-size:9px;color:#9FE1CB;">level</div></div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:11px 14px 16px;display:flex;flex-direction:column;gap:9px;">
+      <div style="background:#2C2C2A;border-radius:14px;padding:13px;display:flex;align-items:center;gap:11px;">
+        <div style="width:34px;height:34px;border-radius:9px;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">⭐</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:500;color:#fff;">Unlock Pro</div><div style="font-size:11px;color:#888780;margin-top:1px;">Unlimited · pronunciation check</div></div>
+        <div style="background:#1D9E75;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:500;color:#fff;white-space:nowrap;">upgrade</div>
+      </div>
+      <div style="font-size:10px;font-weight:500;color:#888780;letter-spacing:0.07em;text-transform:uppercase;">learning</div>
+      <div class="card">
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🎯</div><div style="flex:1;font-size:13px;color:#2C2C2A;">daily goal</div><div style="font-size:11px;color:#888780;margin-right:4px;">2 lessons</div><div class="chevron"></div></div>
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#FAEEDA;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">⏰</div><div style="flex:1;font-size:13px;color:#2C2C2A;">reminder</div><div style="font-size:11px;color:#888780;margin-right:4px;">8:00 am</div><div class="chevron"></div></div>
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🔊</div><div style="flex:1;font-size:13px;color:#2C2C2A;">audio speed</div><div style="font-size:11px;color:#888780;margin-right:4px;">normal</div><div class="chevron"></div></div>
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#FAECE7;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🌐</div><div style="flex:1;font-size:13px;color:#2C2C2A;">accent</div><div style="font-size:11px;color:#888780;margin-right:4px;">American</div><div class="chevron"></div></div>
+      </div>
+      <div style="font-size:10px;font-weight:500;color:#888780;letter-spacing:0.07em;text-transform:uppercase;">accessibility</div>
+      <div class="card">
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">Aa</div><div style="flex:1;font-size:13px;color:#2C2C2A;">dyslexia font</div><div style="width:34px;height:20px;border-radius:10px;background:#D3D1C7;position:relative;flex-shrink:0;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;"></div></div></div>
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">T↑</div><div style="flex:1;font-size:13px;color:#2C2C2A;">larger text</div><div style="width:34px;height:20px;border-radius:10px;background:#D3D1C7;position:relative;flex-shrink:0;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;"></div></div></div>
+      </div>
+      <div style="font-size:10px;font-weight:500;color:#888780;letter-spacing:0.07em;text-transform:uppercase;">app</div>
+      <div class="card">
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🔔</div><div style="flex:1;font-size:13px;color:#2C2C2A;">sound effects</div><div style="width:34px;height:20px;border-radius:10px;background:#1D9E75;position:relative;flex-shrink:0;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;"></div></div></div>
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#F1EFE8;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">📳</div><div style="flex:1;font-size:13px;color:#2C2C2A;">haptic feedback</div><div style="width:34px;height:20px;border-radius:10px;background:#1D9E75;position:relative;flex-shrink:0;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;right:2px;"></div></div></div>
+        <div class="row"><div style="width:28px;height:28px;border-radius:7px;background:#FCEBEB;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🚪</div><div style="flex:1;font-size:13px;color:#E24B4A;">sign out</div><div class="chevron" style="border-color:#E24B4A;"></div></div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">home</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">progress</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">leagues</div></div>
+      <div class="ti"><div class="tbar on"></div><div class="tdot"></div><div class="tlbl on">profile</div></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ─── SCREEN 14: LEADERBOARD ─── -->
+<div class="screen-wrap">
+  <div class="screen-label">screen 14</div>
+  <div class="screen-name">Leaderboard</div>
+  <div class="phone"><div class="screen bg-neutral">
+    <div class="notch"></div>
+    <div style="background:#fff;padding:40px 18px 12px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+        <div style="font-size:18px;font-weight:500;color:#2C2C2A;">leaderboard</div>
+        <div class="pill"><div style="width:7px;height:7px;border-radius:50%;background:#1D9E75;"></div>Teal League</div>
+      </div>
+      <div style="display:flex;background:#F1EFE8;border-radius:20px;padding:3px;">
+        <div style="flex:1;padding:5px;border-radius:16px;background:#fff;font-size:11px;font-weight:500;color:#2C2C2A;text-align:center;">this week</div>
+        <div style="flex:1;padding:5px;font-size:11px;font-weight:500;color:#888780;text-align:center;">all time</div>
+        <div style="flex:1;padding:5px;font-size:11px;font-weight:500;color:#888780;text-align:center;">friends</div>
+      </div>
+    </div>
+    <div style="background:#fff;padding:6px 18px 0;flex-shrink:0;">
+      <div style="font-size:10px;color:#888780;text-align:center;margin-bottom:10px;">resets in 4 days · top 3 promote to Gold</div>
+      <div style="display:flex;align-items:flex-end;justify-content:center;gap:7px;height:110px;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#FAEEDA;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#633806;border:2px solid #5DCAA5;">MK</div>
+          <div style="font-size:9px;color:#5F5E5A;font-weight:500;">Mia K.</div>
+          <div style="font-size:8px;color:#888780;">580 xp</div>
+          <div style="background:#5DCAA5;width:56px;height:52px;border-radius:5px 5px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;"><span style="font-size:12px;font-weight:500;color:#fff;">2</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <div style="font-size:14px;margin-bottom:1px;">👑</div>
+          <div style="width:38px;height:38px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#085041;border:2px solid #EF9F27;">JL</div>
+          <div style="font-size:9px;color:#5F5E5A;font-weight:500;">James L.</div>
+          <div style="font-size:8px;color:#888780;">720 xp</div>
+          <div style="background:#1D9E75;width:68px;height:66px;border-radius:5px 5px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;"><span style="font-size:12px;font-weight:500;color:#fff;">1</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#FAECE7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#712B13;border:2px solid #9FE1CB;">SR</div>
+          <div style="font-size:9px;color:#5F5E5A;font-weight:500;">Sara R.</div>
+          <div style="font-size:8px;color:#888780;">510 xp</div>
+          <div style="background:#9FE1CB;width:56px;height:40px;border-radius:5px 5px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:5px;"><span style="font-size:12px;font-weight:500;color:#fff;">3</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:10px 14px 14px;display:flex;flex-direction:column;gap:5px;">
+      <div style="background:#fff;border-radius:13px;padding:10px 13px;display:flex;align-items:center;gap:9px;border:0.5px solid #D3D1C7;">
+        <div style="font-size:13px;font-weight:500;color:#888780;width:20px;text-align:center;">4</div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#0C447C;flex-shrink:0;">TN</div>
+        <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:#2C2C2A;">Tolu N.</div><div style="font-size:10px;color:#888780;">8 day streak</div></div>
+        <div style="font-size:12px;font-weight:500;color:#1D9E75;">480 xp</div>
+        <div style="background:#E1F5EE;border-radius:4px;padding:2px 5px;font-size:10px;color:#1D9E75;">+2</div>
+      </div>
+      <div style="background:#E1F5EE;border:1.5px solid #1D9E75;border-radius:13px;padding:10px 13px;display:flex;align-items:center;gap:9px;">
+        <div style="font-size:13px;font-weight:500;color:#085041;width:20px;text-align:center;">7</div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#fff;flex-shrink:0;">A</div>
+        <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:#085041;">Abebe (you)</div><div style="font-size:10px;color:#0F6E56;">7 day streak · 340 xp</div></div>
+        <div style="font-size:12px;font-weight:500;color:#085041;">340 xp</div>
+        <div style="background:#E1F5EE;border-radius:4px;padding:2px 5px;font-size:10px;color:#1D9E75;border:0.5px solid #9FE1CB;">+3</div>
+      </div>
+      <div style="background:#fff;border-radius:13px;padding:10px 13px;display:flex;align-items:center;gap:9px;border:0.5px solid #D3D1C7;">
+        <div style="font-size:13px;font-weight:500;color:#888780;width:20px;text-align:center;">8</div>
+        <div style="width:30px;height:30px;border-radius:50%;background:#FAEEDA;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;color:#633806;flex-shrink:0;">DM</div>
+        <div style="flex:1;"><div style="font-size:12px;font-weight:500;color:#2C2C2A;">Dami M.</div><div style="font-size:10px;color:#888780;">2 day streak</div></div>
+        <div style="font-size:12px;font-weight:500;color:#1D9E75;">290 xp</div>
+        <div style="background:#FCEBEB;border-radius:4px;padding:2px 5px;font-size:10px;color:#E24B4A;">-1</div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">home</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">progress</div></div>
+      <div class="ti"><div class="tbar on"></div><div class="tdot"></div><div class="tlbl on">leagues</div></div>
+      <div class="ti"><div class="tbar"></div><div style="height:4px;"></div><div class="tlbl">profile</div></div>
+    </div>
+  </div></div>
+</div>
+
+</div><!-- end grid -->
+
+<div style="text-align:center;margin-top:60px;padding-bottom:40px;">
+  <div style="color:#444;font-size:13px;">PhonicsFlow · 14 screens · All approved</div>
+  <div style="color:#333;font-size:12px;margin-top:4px;">Use this file as visual reference when building with Claude Code</div>
+</div>
+
+</body>
+</html>

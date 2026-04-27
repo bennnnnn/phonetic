@@ -44,3 +44,9 @@ yarn-error.*
 .env.local
 .env.*.local
 assets/sounds/*.mp3
+
+# Cursor/agent worktrees
+.claude/worktrees/
+
+# Supabase CLI temp
+supabase/.temp/
