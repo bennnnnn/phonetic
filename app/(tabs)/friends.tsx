@@ -74,19 +74,14 @@ function EmptyState({
       </Text>
 
       {code && (
-        <View style={styles.codeCard}>
-          <Text style={styles.codeLabel}>Your invite code</Text>
-          <Text style={styles.codeValue}>{code}</Text>
-        </View>
+        <TouchableOpacity style={styles.shareBtn} onPress={onShare} activeOpacity={0.85}>
+          <Ionicons name="share-outline" size={18} color="#fff" />
+          <Text style={styles.shareBtnText}>Invite a friend</Text>
+        </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={styles.shareBtn} onPress={onShare} activeOpacity={0.85}>
-        <Ionicons name="share-outline" size={18} color="#fff" />
-        <Text style={styles.shareBtnText}>Invite a friend</Text>
-      </TouchableOpacity>
-
       <Text style={styles.emptyHint}>
-        Your friend enters your code when they sign up — they'll appear here automatically.
+        When a friend signs up using your invite link, they'll appear here automatically and you can compare progress.
       </Text>
     </View>
   )
@@ -116,7 +111,7 @@ export default function FriendsScreen() {
         {code && friends.length > 0 && (
           <TouchableOpacity style={styles.headerCodeChip} onPress={onShare} activeOpacity={0.8}>
             <Ionicons name="share-outline" size={14} color={colors.primary} />
-            <Text style={styles.headerCodeText}>Invite · {code}</Text>
+            <Text style={styles.headerCodeText}>Invite a friend</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -161,7 +156,7 @@ export default function FriendsScreen() {
             </View>
             <View style={styles.inviteMoreText}>
               <Text style={styles.inviteMoreTitle}>Invite another friend</Text>
-              <Text style={styles.inviteMoreSub}>Your code: {code ?? '…'}</Text>
+              <Text style={styles.inviteMoreSub}>Share your invite link</Text>
             </View>
             <Ionicons name="share-outline" size={18} color={colors.textMuted} />
           </TouchableOpacity>
@@ -208,20 +203,6 @@ const styles = StyleSheet.create({
   emptySub: {
     fontSize: fontSize.md, color: colors.textMuted,
     textAlign: 'center', lineHeight: 22,
-  },
-  codeCard: {
-    backgroundColor: colors.surface, borderRadius: radius.xl,
-    paddingVertical: spacing.md, paddingHorizontal: spacing.xl,
-    alignItems: 'center', gap: 4,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }, elevation: 2,
-    marginVertical: spacing.xs,
-  },
-  codeLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: '500', letterSpacing: 0.5 },
-  codeValue: {
-    fontSize: 28, fontWeight: '700', color: colors.primary,
-    letterSpacing: 6,
   },
   shareBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,

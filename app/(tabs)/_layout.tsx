@@ -10,7 +10,6 @@ function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   const tint = focused ? colors.primary : colors.textMuted
   return (
     <View style={styles.iconWrapper}>
-      <View style={[styles.tabIndicator, focused && styles.tabIndicatorActive]} />
       <Ionicons name={name} size={22} color={tint} />
     </View>
   )
@@ -28,8 +27,13 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopWidth: 0,
+          borderTopColor: 'transparent',
+          elevation: 0,
+          shadowOpacity: 0,
+          shadowColor: 'transparent',
+          shadowRadius: 0,
+          shadowOffset: { width: 0, height: 0 },
           paddingTop: 6,
           paddingBottom: bottomPad,
           height: tabBarHeight,
@@ -68,7 +72,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="leagues" options={{ href: null }} />
       <Tabs.Screen
         name="profile"
         options={{
@@ -79,8 +82,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Practice is now embedded in the Home tab — hidden from nav */}
-      <Tabs.Screen name="practice" options={{ href: null }} />
     </Tabs>
   )
 }
@@ -91,9 +92,4 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     paddingTop: 2, gap: 4,
   },
-  tabIndicator: {
-    width: 20, height: 3, borderRadius: 2,
-    backgroundColor: colors.border,
-  },
-  tabIndicatorActive: { backgroundColor: colors.primary },
 })

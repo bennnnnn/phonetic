@@ -3,6 +3,7 @@ import { Audio } from 'expo-av'
 import * as Speech from 'expo-speech'
 import { haptics } from '@/lib/haptics'
 import { useSettingsStore } from '@/store/settingsStore'
+import { googleTts } from '@/lib/googleTts'
 
 type UseAudioReturn = {
   playing: boolean
@@ -17,7 +18,7 @@ export function useAudio(): UseAudioReturn {
   const [playing, setPlaying] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { hapticsEnabled } = useSettingsStore()
+  const { hapticsEnabled, audioSpeed, accent } = useSettingsStore()
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -30,6 +31,35 @@ export function useAudio(): UseAudioReturn {
     }
   }, [])
 
+  const speakWithSettings = useCallback(async (text: string) => {
+    // Try Google TTS first (primary)
+    const base64 = await googleTts(text, accent, audioSpeed)
+    if (base64) {
+      const uri = `data:audio/mp3;base64,${base64}`
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync()
+        soundRef.current = null
+      }
+      const { sound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true })
+      soundRef.current = sound
+      setPlaying(true)
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) setPlaying(false)
+      })
+      return
+    }
+
+    // Fallback to expo-speech (Google TTS API key not configured)
+    setPlaying(true)
+    Speech.speak(text, {
+      language: accent === 'british' ? 'en-GB' : 'en-US',
+      pitch: 1.0,
+      rate: audioSpeed * 0.85, // expo-speech rate range is roughly 0-1
+      onDone: () => setPlaying(false),
+      onError: () => setPlaying(false),
+    })
+  }, [accent, audioSpeed])
+
   const play = useCallback(async (url: string, fallbackText?: string) => {
     try {
       setLoading(true)
@@ -37,42 +67,36 @@ export function useAudio(): UseAudioReturn {
 
       if (hapticsEnabled) haptics.tap()
 
-      // Fallback to expo-speech if no URL
-      if (!url && fallbackText) {
+      if (url) {
+        // Try playing the pre-recorded audio URL
+        if (soundRef.current) {
+          await soundRef.current.unloadAsync()
+          soundRef.current = null
+        }
+
+        const { sound } = await Audio.Sound.createAsync({ uri: url }, { shouldPlay: true })
+        soundRef.current = sound
         setPlaying(true)
-        Speech.speak(fallbackText, {
-          language: 'en-US',
-          pitch: 1.0,
-          rate: 0.85,
-          onDone: () => setPlaying(false),
-          onError: () => setPlaying(false),
+
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) setPlaying(false)
         })
+
+        // If URL fails, fall through to TTS
         return
       }
 
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync()
-        soundRef.current = null
-      }
-
-      const { sound } = await Audio.Sound.createAsync({ uri: url }, { shouldPlay: true })
-      soundRef.current = sound
-      setPlaying(true)
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) setPlaying(false)
-      })
-    } catch {
-      // If URL fails, try expo-speech as fallback
+      // No URL — use TTS (Google primary, expo-speech backup)
       if (fallbackText) {
-        setPlaying(true)
-        Speech.speak(fallbackText, {
-          language: 'en-US',
-          pitch: 1.0,
-          rate: 0.85,
-          onDone: () => setPlaying(false),
-          onError: () => setPlaying(false),
-        })
+        await speakWithSettings(fallbackText)
+      } else {
+        setError('No audio available')
+        setPlaying(false)
+      }
+    } catch {
+      // If URL playback fails, try TTS as fallback
+      if (fallbackText) {
+        await speakWithSettings(fallbackText)
       } else {
         setError('Could not play audio')
         setPlaying(false)
@@ -80,7 +104,7 @@ export function useAudio(): UseAudioReturn {
     } finally {
       setLoading(false)
     }
-  }, [hapticsEnabled])
+  }, [hapticsEnabled, speakWithSettings])
 
   const stop = useCallback(async () => {
     await soundRef.current?.stopAsync()

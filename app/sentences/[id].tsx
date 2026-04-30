@@ -1,102 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
-import * as Speech from 'expo-speech'
 import { useLesson } from '@/hooks/useLesson'
+import { useAudio } from '@/hooks/useAudio'
+import { useProfile } from '@/hooks/useProfile'
+import { prefetchTranslations } from '@/hooks/useTranslation'
+import { buildPracticeSentences, buildWordByNorm } from '@/lib/sentenceHelpers'
 import { haptics } from '@/lib/haptics'
 import { ROUTES } from '@/lib/routes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import type { Word } from '@/lib/types'
 import SegmentedStepBar from '@/components/ui/SegmentedStepBar'
-
-function normWord(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '')
-}
-
-/** Leading non-letters, core letters/digits, trailing punctuation. */
-function splitToken(raw: string): { lead: string; core: string; trail: string } {
-  let i = 0
-  while (i < raw.length && !/[a-zA-Z0-9]/.test(raw[i]!)) i++
-  const lead = raw.slice(0, i)
-  let j = raw.length
-  while (j > i && !/[a-zA-Z0-9]/.test(raw[j - 1]!)) j--
-  const core = raw.slice(i, j)
-  const trail = raw.slice(j)
-  return { lead, core, trail }
-}
-
-/** Short, readable practice lines built only from this lesson’s words. */
-function buildPracticeSentences(words: Word[]): string[] {
-  if (words.length === 0) return []
-  const t = words.map((w) => w.text)
-  const out: string[] = []
-  out.push(`Can you read this word: ${t[0]}?`)
-  if (t.length >= 2) {
-    out.push(`Look at ${t[0]} and ${t[1]}. Say each one slowly.`)
-  }
-  if (t.length >= 3) {
-    out.push(`Now read: ${t[0]}, ${t[1]}, and ${t[2]}.`)
-  }
-  if (t.length >= 4) {
-    out.push(`Try these together: ${t.slice(0, 4).join(', ')}.`)
-  }
-  if (t.length >= 5) {
-    out.push(`Great work with ${t[4]} and the rest of the family!`)
-  }
-  return out.slice(0, 5)
-}
-
-function HighlightedSentence({
-  sentence,
-  wordByNorm,
-  onWordTap,
-}: {
-  sentence: string
-  wordByNorm: Map<string, Word>
-  onWordTap: (word: Word) => void
-}) {
-  const tokens = sentence.split(/\s+/).filter(Boolean)
-
-  return (
-    <Text style={styles.sentenceBlock}>
-      {tokens.map((raw, i) => {
-        const { lead, core, trail } = splitToken(raw)
-        const key = `${i}-${raw}`
-        const w = core ? wordByNorm.get(normWord(core)) : undefined
-
-        if (!w) {
-          return (
-            <Text key={key} style={styles.sentencePlain}>
-              {i > 0 ? ' ' : ''}
-              {raw}
-            </Text>
-          )
-        }
-
-        return (
-          <Text key={key}>
-            {i > 0 ? ' ' : ''}
-            <Text style={styles.sentencePlain}>{lead}</Text>
-            <Text
-              onPress={() => onWordTap(w)}
-              accessibilityRole="link"
-              accessibilityLabel={`Definition for ${w.text}`}
-              style={styles.sentenceWordWrap}
-            >
-              <Text style={{ fontFamily: 'Georgia' }}>
-                <Text style={styles.consonantInSentence}>{w.consonant}</Text>
-                <Text style={styles.patternInSentence}>{w.pattern}</Text>
-              </Text>
-            </Text>
-            <Text style={styles.sentencePlain}>{trail}</Text>
-          </Text>
-        )
-      })}
-    </Text>
-  )
-}
+import TranslationPill from '@/components/ui/TranslationPill'
+import SentenceTranslation from '@/components/ui/SentenceTranslation'
+import HighlightedSentence from '@/components/sentences/HighlightedSentence'
+import ErrorState from '@/components/ui/ErrorState'
 
 export default function SentencesScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -105,13 +25,7 @@ export default function SentencesScreen() {
   const [tappedWord, setTappedWord] = useState<Word | null>(null)
 
   const words = lesson?.word_family?.words ?? []
-  const wordByNorm = useMemo(() => {
-    const m = new Map<string, Word>()
-    for (const w of words) {
-      m.set(normWord(w.text), w)
-    }
-    return m
-  }, [words])
+  const wordByNorm = useMemo(() => buildWordByNorm(words), [words])
 
   const sentences = useMemo(() => buildPracticeSentences(words), [words])
   const sentenceText = sentences[sentenceIndex] ?? ''
@@ -119,13 +33,25 @@ export default function SentencesScreen() {
 
   const lessonTitle = lesson?.title ?? 'Lesson'
 
+  const { play: playTts } = useAudio()
+
+  // Pre-fetch translations for all unique words in sentences
+  const { profile } = useProfile()
+  const nativeLang = profile?.native_language
+  useEffect(() => {
+    if (sentences.length > 0 && nativeLang && nativeLang !== 'en') {
+      const allWords = [...new Set(sentences.flatMap((s) => s.split(/\s+/).map((w) => w.replace(/[^a-zA-Z]/g, '')).filter(Boolean)))]
+      prefetchTranslations(allWords, nativeLang)
+    }
+  }, [sentences.length, nativeLang])
+
   const handleWordTap = (word: Word) => {
     setTappedWord((prev) => (prev?.id === word.id ? null : word))
     haptics.tap()
   }
 
   const handleHear = () => {
-    if (sentenceText) Speech.speak(sentenceText, { language: 'en-US', rate: 0.92 })
+    if (sentenceText) playTts('', sentenceText)
     haptics.tap()
   }
 
@@ -164,12 +90,7 @@ export default function SentencesScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Lesson not found.'}</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.hearBtn}>
-            <Text style={styles.hearBtnText}>Go back</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState message={error ?? 'Lesson not found.'} />
       </SafeAreaView>
     )
   }
@@ -230,10 +151,18 @@ export default function SentencesScreen() {
               <Text style={styles.hintDef} numberOfLines={4}>
                 {tappedWord.definition}
               </Text>
+              <TranslationPill word={tappedWord.text} />
             </View>
           ) : (
             <View style={[styles.hintStrip, styles.hintStripMuted]}>
               <Text style={styles.hintMuted}>Tap a teal word for its definition</Text>
+            </View>
+          )}
+
+          {/* Sentence translation */}
+          {nativeLang && nativeLang !== 'en' && sentenceText && (
+            <View style={{ marginTop: spacing.xs }}>
+              <SentenceTranslation sentence={sentenceText} langCode={nativeLang} />
             </View>
           )}
 

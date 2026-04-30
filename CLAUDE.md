@@ -264,6 +264,22 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_KEY=
 ELEVENLABS_API_KEY=
 OPENAI_API_KEY=
+# Google Cloud TTS (primary TTS provider — higher quality than device TTS)
+# 1. Go to https://console.cloud.google.com/apis/credentials
+# 2. Create an API key (or use an existing one)
+# 3. Enable the "Cloud Text-to-Speech API" for your project
+# 4. Paste the key here
+EXPO_PUBLIC_GOOGLE_TTS_API_KEY=
+
+# Google Cloud Translation API (for translating words into user's native language)
+# Same API key as above works if you also enable the "Cloud Translation API"
+# 1. Go to https://console.cloud.google.com/apis/library
+# 2. Search for "Cloud Translation API" and enable it
+# 3. Use the same API key from above
+# Pricing: 500k chars/month free, then $20/million chars
+# To use it instead of MyMemory: swap the URL in hooks/useTranslation.ts
+# Example URL: https://translation.googleapis.com/language/translate/v2?key=YOUR_KEY
+
 REVENUECAT_IOS_KEY=
 REVENUECAT_ANDROID_KEY=
 ```

@@ -1,204 +1,248 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, FlatList, ActivityIndicator,
-  Alert, Pressable,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import Animated, {
-  useSharedValue, useAnimatedStyle,
-  withSpring, withTiming, withSequence,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  runOnJS,
 } from 'react-native-reanimated'
-import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { useOnboardingStore } from '@/store/onboardingStore'
+import { pushNotification } from '@/lib/notifications'
 import { friendlyEmailAuthMessage } from '@/lib/authErrors'
-import { LANGUAGES } from '@/lib/languages'
 import { haptics } from '@/lib/haptics'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
-// ── Types ───────────────────────────────────────────────────────────────────
-type Step = 'name' | 'email' | 'password' | 'goal' | 'language'
-type DailyGoal = 1 | 2 | 3 | 5
-
-type GoalOption = {
-  goal: DailyGoal
-  label: string
-  sublabel: string
-  timeEst: string
-  emoji: string
-  tag?: string
-  highlight?: boolean
+// Enable LayoutAnimation on Android
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true)
 }
 
-const GOALS: GoalOption[] = [
-  { goal: 1, label: 'Casual',  sublabel: '1 lesson',  timeEst: '~5 min/day',  emoji: '🌱', tag: 'Great place to start' },
-  { goal: 2, label: 'Regular', sublabel: '2 lessons', timeEst: '~10 min/day', emoji: '⚡', tag: 'Most popular', highlight: true },
-  { goal: 3, label: 'Serious', sublabel: '3 lessons', timeEst: '~15 min/day', emoji: '🔥', tag: '4× faster progress' },
-  { goal: 5, label: 'Intense', sublabel: '5 lessons', timeEst: '~25 min/day', emoji: '🚀', tag: 'Full commitment' },
-]
-
-const STEP_PROGRESS: Partial<Record<Step, number>> = { name: 1, email: 2, password: 3 }
-
-// ── Sub-components ──────────────────────────────────────────────────────────
-function ProgressBar({ current }: { current: number }) {
-  return (
-    <View style={pb.bar}>
-      {[1, 2, 3].map(i => (
-        <View key={i} style={[pb.seg, { backgroundColor: i <= current ? colors.primary : colors.border }]} />
-      ))}
-    </View>
-  )
-}
-const pb = StyleSheet.create({
-  bar: { flexDirection: 'row', gap: 5, flex: 1, marginLeft: spacing.md },
-  seg: { flex: 1, height: 3, borderRadius: 2 },
-})
-
-function GoalCard({
-  option, selected, onSelect,
-}: { option: GoalOption; selected: boolean; onSelect: (g: DailyGoal) => void }) {
-  const scale = useSharedValue(1)
-  const radioScale = useSharedValue(selected ? 1 : 0)
-
-  useEffect(() => {
-    radioScale.value = withSpring(selected ? 1 : 0, { damping: 10, stiffness: 200 })
-  }, [selected])
-
-  const cardStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    backgroundColor: selected ? colors.primaryLight : colors.surface,
-    borderColor: selected ? colors.primary : colors.border,
-    borderWidth: selected ? 1.5 : 1,
-  }))
-
-  const radioStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: radioScale.value }],
-  }))
-
-  return (
-    <Pressable onPress={() => {
-      scale.value = withSequence(
-        withSpring(1.025, { damping: 8, stiffness: 300 }),
-        withSpring(1, { damping: 10, stiffness: 200 })
-      )
-      haptics.tap()
-      onSelect(option.goal)
-    }}>
-      <Animated.View style={[styles.goalCard, cardStyle]}>
-        <Text style={styles.goalEmoji}>{option.emoji}</Text>
-        <View style={styles.goalContent}>
-          <View style={styles.goalLabelRow}>
-            <Text style={styles.goalLabel}>{option.label}</Text>
-            {option.highlight && (
-              <View style={styles.popularBadge}>
-                <Text style={styles.popularText}>⭐ popular</Text>
-              </View>
-            )}
-          </View>
-          <Text style={styles.goalSub}>{option.sublabel} · {option.timeEst}</Text>
-          {option.tag && !option.highlight && (
-            <Text style={styles.goalTag}>{option.tag}</Text>
-          )}
-        </View>
-        <View style={styles.radioOuter}>
-          <Animated.View style={[
-            styles.radioInner,
-            { backgroundColor: selected ? colors.primary : 'transparent' },
-            radioStyle,
-          ]} />
-        </View>
-      </Animated.View>
-    </Pressable>
-  )
-}
-
-// ── Main screen ─────────────────────────────────────────────────────────────
 export default function SignupScreen() {
-  const { ref } = useLocalSearchParams<{ ref?: string }>()
   const { setSession } = useAuthStore()
-  const prefillCode = (ref ?? '').toUpperCase()
+  const { displayName, dailyGoal } = useOnboardingStore()
+  const { ref: referralRef } = useLocalSearchParams<{ ref?: string }>()
 
-  const [step, setStep] = useState<Step>('name')
-  const [name, setName] = useState('')
+  const [emailExpanded, setEmailExpanded] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [goal, setGoal] = useState<DailyGoal>(2)
-  const [langCode, setLangCode] = useState('es')
-  const [langSearch, setLangSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pendingUser, setPendingUser] = useState<{ id: string; session: Session | null } | null>(null)
 
-  const nameRef = useRef<TextInput>(null)
   const emailRef = useRef<TextInput>(null)
   const passwordRef = useRef<TextInput>(null)
 
-  // Entrance animation per step
-  const contentY  = useSharedValue(24)
+  // ── Entrance animations ──────────────────────────────────────────────
+  const heroY = useSharedValue(-30)
+  const heroOp = useSharedValue(0)
+
+  const contentY = useSharedValue(30)
   const contentOp = useSharedValue(0)
 
-  useEffect(() => {
-    contentY.value  = 24
-    contentOp.value = 0
-    contentY.value  = withSpring(0, { damping: 20, stiffness: 200 })
-    contentOp.value = withTiming(1, { duration: 220 })
+  const googleY = useSharedValue(20)
+  const googleOp = useSharedValue(0)
 
-    const t = setTimeout(() => {
-      if (step === 'name')     nameRef.current?.focus()
-      if (step === 'email')    emailRef.current?.focus()
-      if (step === 'password') passwordRef.current?.focus()
-    }, 300)
-    return () => clearTimeout(t)
-  }, [step])
+  const emailBtnY = useSharedValue(20)
+  const emailBtnOp = useSharedValue(0)
+
+  const bottomOp = useSharedValue(0)
+
+  useEffect(() => {
+    // Hero drops in
+    heroY.value = withSpring(0, { damping: 14, stiffness: 100 })
+    heroOp.value = withTiming(1, { duration: 300 })
+
+    // Content slides up
+    contentY.value = withDelay(150, withSpring(0, { damping: 16, stiffness: 120 }))
+    contentOp.value = withDelay(150, withTiming(1, { duration: 300 }))
+
+    // Buttons stagger in
+    googleY.value = withDelay(300, withSpring(0, { damping: 14, stiffness: 130 }))
+    googleOp.value = withDelay(300, withTiming(1, { duration: 250 }))
+
+    emailBtnY.value = withDelay(380, withSpring(0, { damping: 14, stiffness: 130 }))
+    emailBtnOp.value = withDelay(380, withTiming(1, { duration: 250 }))
+
+    // Bottom links fade in last
+    bottomOp.value = withDelay(500, withTiming(1, { duration: 300 }))
+  }, [])
+
+  const heroStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: heroY.value }],
+    opacity: heroOp.value,
+  }))
 
   const contentStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: contentY.value }],
     opacity: contentOp.value,
   }))
 
-  // ── Navigation ────────────────────────────────────────────────────────
-  const goBack = () => {
-    setError(null)
-    if (step === 'name')     { router.back(); return }
-    if (step === 'email')    { setStep('name'); return }
-    if (step === 'password') { setStep('email'); return }
+  const googleStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: googleY.value }],
+    opacity: googleOp.value,
+  }))
+
+  const emailBtnStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: emailBtnY.value }],
+    opacity: emailBtnOp.value,
+  }))
+
+  const bottomStyle = useAnimatedStyle(() => ({
+    opacity: bottomOp.value,
+  }))
+
+  // ── Email expansion ──────────────────────────────────────────────────
+  const handleEmailExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
+    setEmailExpanded(true)
+    haptics.tap()
+    setTimeout(() => emailRef.current?.focus(), 350)
   }
 
-  // ── Pre-auth handlers ─────────────────────────────────────────────────
-  const handleNameNext = () => {
-    if (!name.trim()) { setError('Please enter your name.'); return }
-    setError(null)
-    setStep('email')
+  const handleGoogle = () => {
+    haptics.tap()
+    // Google OAuth will be wired in a future update
   }
 
-  const handleEmailNext = () => {
-    const t = email.trim()
-    if (!t || !t.includes('@') || !t.includes('.')) {
+  // ── Signup ───────────────────────────────────────────────────────────
+  const handleSignup = async () => {
+    KeyboardAvoidingView
+    const trimmedEmail = email.trim()
+    const trimmedPassword = password
+
+    if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
       setError('Please enter a valid email address.')
       return
     }
-    setError(null)
-    setStep('password')
-  }
+    if (trimmedPassword.length < 6) {
+      setError('Password must be at least 6 characters.')
+      return
+    }
 
-  const handleCreate = async () => {
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setError(null)
     setLoading(true)
+
     try {
       const { data, error: signupErr } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: { data: { display_name: name.trim() } },
+        email: trimmedEmail,
+        password: trimmedPassword,
+        options: {
+          data: { display_name: displayName.trim() || 'Learner' },
+        },
       })
+
       if (signupErr) throw signupErr
       if (!data.user) throw new Error('Signup failed')
-      setPendingUser({ id: data.user.id, session: data.session })
-      setStep('goal')
+
+      // Create user profile with onboarding data
+      await supabase.from('user_profiles').upsert(
+        {
+          id: data.user.id,
+          display_name: displayName.trim() || 'Learner',
+          daily_goal: dailyGoal,
+        },
+        { onConflict: 'id' }
+      )
+
+      // If user arrived via an invite link, create the friendship
+      if (referralRef) {
+        try {
+          const { data: referrer } = await supabase
+            .from('user_profiles')
+            .select('id')
+            .eq('referral_code', referralRef)
+            .maybeSingle()
+          if (referrer) {
+            await supabase.from('friendships').upsert(
+              {
+                referrer_id: referrer.id,
+                referred_id: data.user.id,
+              },
+              { onConflict: 'referrer_id,referred_id' },
+            )
+
+            // Increment referrer's referral count and grant free months
+            const REFERRALS_PER_MONTH = 10
+            const { data: rewards } = await supabase
+              .from('referral_rewards')
+              .select('referral_count, free_months')
+              .eq('user_id', referrer.id)
+              .maybeSingle()
+
+            let newCount = 0
+            if (rewards) {
+              const r = rewards as { referral_count: number; free_months: number }
+              newCount = r.referral_count + 1
+              const newFreeMonths = Math.floor(newCount / REFERRALS_PER_MONTH)
+              await supabase.from('referral_rewards').update({
+                referral_count: newCount,
+                free_months: newFreeMonths,
+                updated_at: new Date().toISOString(),
+              }).eq('user_id', referrer.id)
+            } else {
+              const newFreeMonths = Math.floor(1 / REFERRALS_PER_MONTH)
+              await supabase.from('referral_rewards').insert({
+                user_id: referrer.id,
+                referral_count: 1,
+                free_months: newFreeMonths,
+              })
+            }
+
+            // Notify referrer that a friend joined
+            try {
+              const displayName = (data?.user?.user_metadata?.display_name as string) || 'Someone'
+              await pushNotification({
+                userId: referrer.id,
+                type: 'friend_joined',
+                title: `${displayName} joined PhonicsFlow!`,
+                body: 'They used your invite link — check your Friends tab.',
+                emoji: '🤝',
+                linkRoute: '/(tabs)/friends',
+              })
+              // Notify after 10 referrals milestone
+              if (newCount > 0 && newCount % 10 === 0) {
+                await pushNotification({
+                  userId: referrer.id,
+                  type: 'referral_milestone',
+                  title: `You've referred ${newCount} friends! 🎉`,
+                  body: `You earned 1 free month of Pro. Check your Profile.`,
+                  emoji: '🎉',
+                  linkRoute: '/(tabs)/profile',
+                })
+              }
+            } catch {}
+          }
+        } catch {
+          // Silent fail — referral is best-effort
+        }
+      }
+
+      if (data.session) {
+        setSession(data.session)
+        router.replace('/(tabs)/home')
+      }
     } catch (err) {
       setError(friendlyEmailAuthMessage(err, 'Signup failed. Please try again.'))
     } finally {
@@ -206,359 +250,235 @@ export default function SignupScreen() {
     }
   }
 
-  // ── Post-auth handlers ────────────────────────────────────────────────
-  const handleFinish = async () => {
-    if (!pendingUser) return
-    setLoading(true)
-    try {
-      await supabase.from('user_profiles').upsert(
-        {
-          id: pendingUser.id,
-          display_name: name.trim(),
-          daily_goal: goal,
-          native_language: langCode,
-        },
-        { onConflict: 'id' }
-      )
-
-      if (prefillCode) {
-        const { data: referrer } = await supabase
-          .from('user_profiles')
-          .select('id')
-          .eq('referral_code', prefillCode)
-          .neq('id', pendingUser.id)
-          .single()
-        if (referrer) {
-          await supabase.from('friendships').insert({
-            referrer_id: referrer.id,
-            referred_id: pendingUser.id,
-          })
-        }
-      }
-
-      setSession(pendingUser.session)
-      router.replace('/(tabs)/home')
-    } catch {
-      setLoading(false)
-      Alert.alert('Error', 'Could not save your profile. Please try again.')
-    }
-  }
-
-  // ── Language filter ────────────────────────────────────────────────────
-  const filteredLangs = useMemo(() => {
-    const q = langSearch.toLowerCase()
-    if (!q) return LANGUAGES
-    return LANGUAGES.filter(l => l.label.toLowerCase().includes(q))
-  }, [langSearch])
-
-  const progress = STEP_PROGRESS[step] ?? 0
-  const isPreAuth = step === 'name' || step === 'email' || step === 'password'
-
-  // ── Render: name / email / password ───────────────────────────────────
-  if (isPreAuth) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.stepWrap}>
-            {/* Header */}
-            <View style={styles.stepHeader}>
-              <TouchableOpacity onPress={goBack} hitSlop={12}>
-                <Ionicons name="arrow-back" size={22} color={colors.text} />
-              </TouchableOpacity>
-              <ProgressBar current={progress} />
+          {/* ── Teal hero ──────────────────────────────────────────── */}
+          <Animated.View style={[styles.hero, heroStyle]}>
+            <View style={styles.heroLogoCard}>
+              <Text style={styles.heroLogoText}>Pf</Text>
             </View>
+            <Text style={styles.heroAppName}>PhonicsFlow</Text>
+            <Text style={styles.heroTagline}>free to start · no credit card</Text>
+          </Animated.View>
 
-            {/* Body */}
-            <Animated.View style={[styles.stepBody, contentStyle]}>
-              {prefillCode && step === 'name' && (
-                <View style={styles.referralBanner}>
-                  <Text style={styles.referralText}>
-                    🎉 Joined via a friend's invite — you'll be connected automatically.
-                  </Text>
+          {/* ── Content area ────────────────────────────────────────── */}
+          <Animated.View style={[styles.content, contentStyle]}>
+            <Text style={styles.headline}>Create your account</Text>
+            <Text style={styles.sub}>Join in seconds.</Text>
+
+            {/* Error banner */}
+            {error ? (
+              <Animated.View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </Animated.View>
+            ) : null}
+
+            {/* Google button — PRIMARY (on top, more prominent) */}
+            {/* Google button — disabled/coming-soon state */}
+            <Animated.View style={googleStyle}>
+              <TouchableOpacity
+                style={[styles.googleBtn, { opacity: 0.5 }]}
+                disabled
+              >
+                <View style={styles.googleIcon}>
+                  <Text style={styles.googleG}>G</Text>
                 </View>
-              )}
-
-              <Text style={styles.question}>
-                {step === 'name'     && "What's your name?"}
-                {step === 'email'    && "What's your email?"}
-                {step === 'password' && 'Create a password'}
-              </Text>
-
-              <Text style={styles.questionSub}>
-                {step === 'name'     && "This is how you'll appear in the app."}
-                {step === 'email'    && "We'll use this to sign you in."}
-                {step === 'password' && 'At least 6 characters. You can always change it.'}
-              </Text>
-
-              {error ? (
-                <View style={styles.errorBox}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
-
-              {step === 'name' && (
-                <TextInput
-                  ref={nameRef}
-                  style={styles.input}
-                  value={name}
-                  onChangeText={v => { setName(v); setError(null) }}
-                  placeholder="Your name"
-                  placeholderTextColor={colors.textHint}
-                  autoCapitalize="words"
-                  autoComplete="name"
-                  returnKeyType="next"
-                  onSubmitEditing={handleNameNext}
-                />
-              )}
-
-              {step === 'email' && (
-                <TextInput
-                  ref={emailRef}
-                  style={styles.input}
-                  value={email}
-                  onChangeText={v => { setEmail(v); setError(null) }}
-                  placeholder="you@example.com"
-                  placeholderTextColor={colors.textHint}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  returnKeyType="next"
-                  onSubmitEditing={handleEmailNext}
-                />
-              )}
-
-              {step === 'password' && (
-                <>
-                  <View style={styles.passwordWrap}>
-                    <TextInput
-                      ref={passwordRef}
-                      style={[styles.input, styles.passwordInput]}
-                      value={password}
-                      onChangeText={v => { setPassword(v); setError(null) }}
-                      placeholder="Min. 6 characters"
-                      placeholderTextColor={colors.textHint}
-                      secureTextEntry={!showPassword}
-                      autoComplete="new-password"
-                      returnKeyType="done"
-                      onSubmitEditing={handleCreate}
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(v => !v)}
-                      style={styles.showBtn}
-                    >
-                      <Text style={styles.showBtnText}>{showPassword ? 'hide' : 'show'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.terms}>
-                    By signing up you agree to our{' '}
-                    <Text style={styles.termsLink} onPress={() => router.push('/(auth)/terms')}>Terms</Text>
-                    {' '}and{' '}
-                    <Text style={styles.termsLink} onPress={() => router.push('/(auth)/privacy')}>Privacy Policy</Text>
-                  </Text>
-                </>
-              )}
-
+                <Text style={[styles.googleLabel, { color: colors.textMuted }]}>Continue with Google — coming soon</Text>
+              </TouchableOpacity>
             </Animated.View>
 
-            {/* Footer */}
-            <TouchableOpacity
-              style={[styles.primaryBtn, loading && styles.disabled]}
-              onPress={step === 'name' ? handleNameNext : step === 'email' ? handleEmailNext : handleCreate}
-              disabled={loading}
-            >
-              {loading && step === 'password' ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryBtnText}>
-                  {step === 'password' ? 'Create account' : 'Continue →'}
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Email button — SECONDARY, expands inline */}
+            <Animated.View style={emailBtnStyle}>
+              <TouchableOpacity
+                style={[
+                  styles.emailBtn,
+                  emailExpanded && styles.emailBtnExpanded,
+                ]}
+                onPress={emailExpanded ? undefined : handleEmailExpand}
+                activeOpacity={emailExpanded ? 1 : 0.85}
+              >
+                {emailExpanded ? (
+                  <View style={styles.emailForm}>
+                    {/* Email field */}
+                    <TextInput
+                      ref={emailRef}
+                      style={styles.input}
+                      value={email}
+                      onChangeText={(v) => { setEmail(v); setError(null) }}
+                      placeholder="you@example.com"
+                      placeholderTextColor={colors.textHint}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      returnKeyType="next"
+                      onSubmitEditing={() => passwordRef.current?.focus()}
+                    />
+
+                    {/* Password field */}
+                    <View style={styles.passwordWrap}>
+                      <TextInput
+                        ref={passwordRef}
+                        style={[styles.input, styles.passwordInput]}
+                        value={password}
+                        onChangeText={(v) => { setPassword(v); setError(null) }}
+                        placeholder="Password (min. 6 characters)"
+                        placeholderTextColor={colors.textHint}
+                        secureTextEntry={!showPassword}
+                        autoComplete="new-password"
+                        returnKeyType="done"
+                        onSubmitEditing={handleSignup}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword((v) => !v)}
+                        style={styles.showBtn}
+                        hitSlop={8}
+                      >
+                        <Ionicons
+                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={colors.textMuted}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Sign up button */}
+                    <TouchableOpacity
+                      style={[styles.primaryBtn, loading && styles.disabled]}
+                      onPress={handleSignup}
+                      disabled={loading}
+                      activeOpacity={0.85}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.primaryBtnText}>Create account</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={styles.emailBtnLabel}>Continue with email</Text>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* Sign in link */}
+            <Animated.View style={bottomStyle}>
+              <TouchableOpacity
+                onPress={() => router.replace('/(auth)/login')}
+                style={styles.signInRow}
+              >
+                <Text style={styles.signInText}>
+                  already have an account?{' '}
+                  <Text style={styles.signInLink}>sign in</Text>
                 </Text>
-              )}
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => router.replace('/(auth)/login')}
-              style={styles.signInRow}
-            >
-              <Text style={styles.signInText}>
-                Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+              {/* Terms */}
+              <Text style={styles.terms}>
+                By signing up you agree to our{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => router.push('/(auth)/terms')}
+                >
+                  Terms
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => router.push('/(auth)/privacy')}
+                >
+                  Privacy Policy
+                </Text>
               </Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    )
-  }
-
-  // ── Render: goal ───────────────────────────────────────────────────────
-  if (step === 'goal') {
-    return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <Animated.View style={[styles.postHeader, contentStyle]}>
-          <Text style={styles.eyebrow}>ALMOST THERE</Text>
-          <Text style={styles.postHeadline}>How much do you want{'\n'}to learn each day?</Text>
-          <Text style={styles.postSub}>You can change this any time in settings.</Text>
-        </Animated.View>
-
-        <Animated.View style={[styles.goalList, contentStyle]}>
-          {GOALS.map(opt => (
-            <GoalCard
-              key={opt.goal}
-              option={opt}
-              selected={goal === opt.goal}
-              onSelect={setGoal}
-            />
-          ))}
-        </Animated.View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={styles.primaryBtn}
-            onPress={() => setStep('language')}
-          >
-            <Text style={styles.primaryBtnText}>Continue →</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    )
-  }
-
-  // ── Render: language ───────────────────────────────────────────────────
-  return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <Animated.View style={[styles.postHeader, contentStyle]}>
-        <Text style={styles.eyebrow}>ONE MORE THING</Text>
-        <Text style={styles.postHeadline}>What's your native language?</Text>
-        <Text style={styles.postSub}>We'll tailor examples to help you learn faster.</Text>
-      </Animated.View>
-
-      <View style={styles.searchWrap}>
-        <Ionicons name="search-outline" size={16} color={colors.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          value={langSearch}
-          onChangeText={setLangSearch}
-          placeholder="Search languages..."
-          placeholderTextColor={colors.textHint}
-          autoCapitalize="none"
-          clearButtonMode="while-editing"
-        />
-      </View>
-
-      <FlatList
-        data={filteredLangs}
-        keyExtractor={item => item.code}
-        style={styles.langList}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        renderItem={({ item }) => {
-          const selected = langCode === item.code
-          return (
-            <TouchableOpacity
-              style={[styles.langRow, selected && styles.langRowSelected]}
-              onPress={() => { setLangCode(item.code); haptics.tap() }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.langFlag}>{item.flag}</Text>
-              <Text style={[styles.langLabel, selected && styles.langLabelSelected]}>
-                {item.label}
-              </Text>
-              {selected && (
-                <Ionicons name="checkmark" size={18} color={colors.primary} />
-              )}
-            </TouchableOpacity>
-          )
-        }}
-      />
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.primaryBtn, loading && styles.disabled]}
-          onPress={handleFinish}
-          disabled={loading}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.primaryBtnText}>Get started →</Text>
-          }
-        </TouchableOpacity>
-      </View>
+            </Animated.View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   )
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
+// ── Styles ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.surface },
   flex: { flex: 1 },
+  scroll: { flexGrow: 1 },
 
-  // Pre-auth step layout
-  stepWrap: {
+  // Hero
+  hero: {
+    backgroundColor: colors.primary,
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  heroLogoCard: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  heroLogoText: {
+    fontFamily: 'Georgia',
+    fontSize: 18,
+    fontWeight: '500',
+    color: colors.primary,
+  },
+  heroAppName: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+  },
+  heroTagline: {
+    color: '#9FE1CB',
+    fontSize: fontSize.sm,
+  },
+
+  // Content
+  content: {
     flex: 1,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-  },
-  stepHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  stepBody: {
-    flex: 1,
-    paddingTop: spacing.xxl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xxl,
     gap: spacing.md,
   },
-
-  referralBanner: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-  },
-  referralText: { fontSize: fontSize.sm, color: colors.primaryDark, lineHeight: 18 },
-
-  question: {
-    fontSize: 26,
+  headline: {
+    fontSize: 22,
     fontWeight: '600',
     color: colors.text,
-    letterSpacing: -0.5,
-    lineHeight: 34,
+    letterSpacing: -0.3,
   },
-  questionSub: {
+  sub: {
     fontSize: fontSize.md,
     color: colors.textMuted,
-    marginTop: -spacing.xs,
-    lineHeight: 20,
+    marginTop: -spacing.sm,
   },
 
-  input: {
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: fontSize.lg,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-
-  passwordWrap: { position: 'relative' },
-  passwordInput: { paddingRight: 60 },
-  showBtn: { position: 'absolute', right: 16, top: 16 },
-  showBtnText: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500' },
-
-  terms: {
-    textAlign: 'center',
-    color: colors.textHint,
-    fontSize: 11,
-    lineHeight: 17,
-  },
-  termsLink: { color: colors.textMuted, textDecorationLine: 'underline' },
-
+  // Error
   errorBox: {
     backgroundColor: colors.errorLight,
     borderRadius: radius.md,
@@ -566,107 +486,132 @@ const styles = StyleSheet.create({
   },
   errorText: { color: colors.error, fontSize: fontSize.md },
 
+  // Google button — PRIMARY
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 14,
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  googleIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleG: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D85A30',
+  },
+  googleLabel: {
+    fontSize: fontSize.lg,
+    fontWeight: '500',
+    color: colors.text,
+  },
+
+  // Divider
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { fontSize: fontSize.sm, color: colors.textHint },
+
+  // Email button — SECONDARY, expands inline
+  emailBtn: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  emailBtnExpanded: {
+    backgroundColor: colors.surface,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  emailBtnLabel: {
+    color: colors.primary,
+    fontSize: fontSize.lg,
+    fontWeight: '600',
+  },
+  emailForm: {
+    padding: spacing.md,
+    gap: spacing.sm,
+    width: '100%',
+  },
+
+  // Inputs
+  input: {
+    borderWidth: 1.5,
+    borderColor: colors.borderLight,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    fontSize: fontSize.lg,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  passwordWrap: { position: 'relative' },
+  passwordInput: { paddingRight: 44 },
+  showBtn: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+  },
+
+  // Primary button (Create account)
   primaryBtn: {
     backgroundColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
   },
-  primaryBtnText: { color: '#fff', fontSize: fontSize.lg, fontWeight: '600' },
+  primaryBtnText: {
+    color: '#fff',
+    fontSize: fontSize.lg,
+    fontWeight: '600',
+  },
   disabled: { opacity: 0.6 },
 
-  signInRow: { alignItems: 'center', paddingVertical: spacing.xs },
-  signInText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center' },
-  signInLink: { color: colors.primary, fontWeight: '600' },
-
-  // Post-auth shared
-  postHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-    gap: spacing.xs,
+  // Sign in + terms
+  signInRow: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
   },
-  eyebrow: {
-    fontSize: fontSize.xs,
+  signInText: {
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+  },
+  signInLink: {
     color: colors.primary,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  postHeadline: {
-    fontSize: fontSize.xxl,
     fontWeight: '600',
-    color: colors.text,
-    lineHeight: 30,
-    letterSpacing: -0.3,
   },
-  postSub: { fontSize: fontSize.md, color: colors.textMuted, lineHeight: 20 },
-
-  footer: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xl,
+  terms: {
+    textAlign: 'center',
+    color: colors.textHint,
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: spacing.xs,
   },
-
-  // Goal step
-  goalList: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
+  termsLink: {
+    color: colors.textMuted,
+    textDecorationLine: 'underline',
   },
-  goalCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  goalEmoji: { fontSize: 26 },
-  goalContent: { flex: 1, gap: 2 },
-  goalLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  goalLabel: { fontSize: fontSize.lg, fontWeight: '600', color: colors.text },
-  goalSub: { fontSize: fontSize.md, color: colors.textMuted },
-  goalTag: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '500' },
-  popularBadge: {
-    backgroundColor: colors.amber,
-    borderRadius: radius.full,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  popularText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
-  radioOuter: {
-    width: 22, height: 22, borderRadius: radius.full,
-    borderWidth: 2, borderColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  radioInner: { width: 12, height: 12, borderRadius: radius.full },
-
-  // Language step
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.neutral,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-  },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: fontSize.md, color: colors.text },
-  langList: { flex: 1 },
-  langRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: spacing.lg,
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  langRowSelected: { backgroundColor: colors.primaryLight },
-  langFlag: { fontSize: 22, width: 30 },
-  langLabel: { flex: 1, fontSize: fontSize.lg, color: colors.text },
-  langLabelSelected: { color: colors.primaryDark, fontWeight: '500' },
 })

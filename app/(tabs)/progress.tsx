@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import {
   ScrollView, View, Text, TouchableOpacity,
   StyleSheet, RefreshControl,
@@ -10,7 +10,9 @@ import { useProgress } from '@/hooks/useProgress'
 import { useProfile } from '@/hooks/useProfile'
 import { useLessonDirectory } from '@/hooks/useLessonDirectory'
 import { useGroupProgress } from '@/hooks/useGroupProgress'
-import { GROUP_NODES } from '@/lib/practiceThemes'
+import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
+import { GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
 import { ROUTES } from '@/lib/routes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import { progressForLesson, familyProgressPct } from '@/lib/lessonProgress'
@@ -42,17 +44,67 @@ function isCompletedInPeriod(row: UserProgress, period: Period): boolean {
   return t >= cutoff && t <= endOfToday
 }
 
+// ── Reusable collapsible section ──────────────────────────────────────────────
+
+function ProgressSection({
+  title, emoji, open, onToggle, children,
+}: {
+  title: string; emoji: string; open: boolean; onToggle: () => void; children: React.ReactNode
+}) {
+  return (
+    <View style={styles.section}>
+      <TouchableOpacity style={styles.sectionHeader} onPress={onToggle} activeOpacity={0.7}>
+        <View style={styles.sectionHeaderLeft}>
+          <Text style={styles.sectionEmoji}>{emoji}</Text>
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        <Ionicons
+          name={open ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color={colors.textMuted}
+        />
+      </TouchableOpacity>
+      {open && (
+        <View style={styles.itemList}>
+          {children}
+        </View>
+      )}
+    </View>
+  )
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets()
   const [period, setPeriod]       = useState<Period>('week')
   const [refreshing, setRefreshing] = useState(false)
+  const [progressOpen, setProgressOpen] = useState(true)
+  const [vocabOpen, setVocabOpen] = useState(true)
+  const [verbsOpen, setVerbsOpen] = useState(true)
+  const [homoOpen, setHomoOpen] = useState(true)
 
   const { completedLessonIds, totalXP, progress, loading: progressLoading, error: progressError, refetch: refetchProgress } = useProgress()
   const { profile, error: profileError, refetch: refetchProfile } = useProfile()
   const { lessons, refetch: refetchLessons } = useLessonDirectory()
-  const { completedGroups, refetch: refetchGroups } = useGroupProgress()
+  const { completedGroups, startedGroups, refetch: refetchGroups } = useGroupProgress()
+  const [groupCompletedDates, setGroupCompletedDates] = useState<string[]>([])
+
+  // Fetch group progress dates for activity dots
+  useEffect(() => {
+    const u = useAuthStore.getState().user
+    if (!u) return
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('group_progress')
+          .select('completed_at')
+          .eq('user_id', u.id)
+          .eq('completed', true)
+        if (data) setGroupCompletedDates(data.map((r: { completed_at: string }) => r.completed_at).filter(Boolean))
+      } catch {}
+    })()
+  }, [completedGroups])
 
   const streak       = profile?.streak_days ?? 0
   const xp           = profile?.total_xp ?? totalXP
@@ -64,7 +116,13 @@ export default function ProgressScreen() {
 
   const totalWordsMastered = useMemo(() => {
     const all = new Set<string>()
-    progress.forEach((p) => p.words_mastered?.forEach((w) => all.add(w)))
+    progress.forEach((p) => {
+      const wm = p.words_mastered
+      if (Array.isArray(wm)) wm.forEach((w) => all.add(w))
+      else if (typeof wm === 'string') {
+        try { JSON.parse(wm).forEach((w: string) => all.add(w)) } catch {}
+      }
+    })
     return all.size
   }, [progress])
 
@@ -83,7 +141,13 @@ export default function ProgressScreen() {
 
   const wordsMasteredInPeriod = useMemo(() => {
     const set = new Set<string>()
-    filteredProgress.forEach((p) => p.words_mastered?.forEach((w) => set.add(w)))
+    filteredProgress.forEach((p) => {
+      const wm = p.words_mastered
+      if (Array.isArray(wm)) wm.forEach((w) => set.add(w))
+      else if (typeof wm === 'string') {
+        try { JSON.parse(wm).forEach((w: string) => set.add(w)) } catch {}
+      }
+    })
     return set.size
   }, [filteredProgress])
 
@@ -97,17 +161,23 @@ export default function ProgressScreen() {
     ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
     : null
 
-  // ── Activity dots (always last 7 days) ────────────────────────────────────
+  // ── Activity dots (always last 7 days) — includes both phonics AND group progress ──
 
   const completedDays = useMemo(() => {
     const set = new Set<string>()
+    // Phonics lessons
     progress.forEach((p) => {
       if (!p.completed || !p.completed_at) return
       const d = new Date(p.completed_at)
       if (!Number.isNaN(d.getTime())) set.add(dayKey(d))
     })
+    // Group progress
+    groupCompletedDates.forEach((dateStr) => {
+      const d = new Date(dateStr)
+      if (!Number.isNaN(d.getTime())) set.add(dayKey(d))
+    })
     return set
-  }, [progress])
+  }, [progress, groupCompletedDates])
 
   const weekDays = useMemo(() => {
     const today    = new Date()
@@ -136,16 +206,38 @@ export default function ProgressScreen() {
   const startedLessons = useMemo(() =>
     sortedLessons.filter((l) =>
       completedLessonIds.includes(l.id) ||
-      (progressForLesson(progress, l.id)?.words_mastered?.length ?? 0) > 0
+      (() => {
+        const p = progressForLesson(progress, l.id)
+        if (!p) return false
+        const wm = p.words_mastered
+        if (Array.isArray(wm)) return wm.length > 0
+        if (typeof wm === 'string') {
+          try { return JSON.parse(wm).length > 0 } catch { return false }
+        }
+        return false
+      })()
     ),
   [sortedLessons, completedLessonIds, progress])
 
-  // ── Vocabulary: only completed groups ────────────────────────────────────
+  // ── Progress: only groups that are completed OR in progress ───────────────
 
-  const completedGroupItems = useMemo(
-    () => GROUP_NODES.filter((g) => completedGroups.includes(g.id)),
-    [completedGroups],
+  const groupProgressItems = useMemo(
+    () => {
+      const allNodes = [...GROUP_NODES, ...IRREGULAR_VERB_NODES, ...HOMOPHONE_NODES]
+      const startedSet = new Set(startedGroups)
+      return allNodes
+        .filter((node) => startedSet.has(node.id))
+        .map((node) => ({
+          ...node,
+          done: completedGroups.includes(node.id),
+        }))
+    },
+    [completedGroups, startedGroups],
   )
+
+  const vocabItems = useMemo(() => groupProgressItems.filter((g) => GROUP_NODES.some((n) => n.id === g.id)), [groupProgressItems])
+  const verbsItems = useMemo(() => groupProgressItems.filter((g) => IRREGULAR_VERB_NODES.some((n) => n.id === g.id)), [groupProgressItems])
+  const homoItems  = useMemo(() => groupProgressItems.filter((g) => HOMOPHONE_NODES.some((n) => n.id === g.id)), [groupProgressItems])
 
   // ── Data plumbing ─────────────────────────────────────────────────────────
 
@@ -166,7 +258,7 @@ export default function ProgressScreen() {
   }, [refetchProgress, refetchProfile, refetchLessons, refetchGroups])
 
   const dataError       = progressError ?? profileError
-  const hasAnyProgress  = completedLessonIds.length > 0 || totalWordsMastered > 0 || completedGroups.length > 0
+  const hasAnyProgress  = completedLessonIds.length > 0 || totalWordsMastered > 0 || completedGroups.length > 0 || groupProgressItems.length > 0
   const periodLabel     = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
 
   return (
@@ -197,11 +289,6 @@ export default function ProgressScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </View>
-        <View style={styles.pillRow}>
-          <View style={styles.pill}><Text style={styles.pillText}>🔥 {streak} day streak</Text></View>
-          <View style={styles.pill}><Text style={styles.pillText}>⚡ {xp} XP total</Text></View>
-          <View style={styles.pill}><Text style={styles.pillText}>📖 {totalWordsMastered} words</Text></View>
         </View>
       </View>
 
@@ -284,69 +371,121 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* Phonics: started + completed lessons only */}
+        {/* Phonics: started + completed lessons only — collapsible */}
         {startedLessons.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionEyebrow}>phonics</Text>
-            <View style={styles.itemList}>
-              {startedLessons.map((lesson, i) => {
-                const done = completedLessonIds.includes(lesson.id)
-                const p    = progressForLesson(progress, lesson.id)
-                const pct  = familyProgressPct(p, done, lesson.wordCount)
-                return (
-                  <TouchableOpacity
-                    key={lesson.id}
-                    style={[styles.itemRow, i < startedLessons.length - 1 && styles.itemRowBorder]}
-                    onPress={() => router.push(done ? ROUTES.REVIEW(lesson.id) : ROUTES.LESSON(lesson.id))}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.itemPattern}>{lesson.pattern || '—'}</Text>
-                    <View style={styles.itemMeta}>
-                      <View style={styles.itemNameRow}>
-                        <Text style={styles.itemName} numberOfLines={1}>{lesson.title}</Text>
-                        <Text style={[styles.itemPct, done && styles.itemPctDone]}>
-                          {done ? '✓ done' : `${pct}%`}
-                        </Text>
-                      </View>
-                      <View style={styles.itemTrack}>
-                        <View style={[styles.itemFill, { width: `${pct}%` as `${number}%` }, done && styles.itemFillDone]} />
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
-                  </TouchableOpacity>
-                )
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* Vocabulary: completed groups only */}
-        {completedGroupItems.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionEyebrow}>vocabulary</Text>
-            <View style={styles.itemList}>
-              {completedGroupItems.map((g, i) => (
+          <ProgressSection title="Phonics" emoji="📚" open={progressOpen} onToggle={() => setProgressOpen((p) => !p)}>
+            {startedLessons.map((lesson, i) => {
+              const done = completedLessonIds.includes(lesson.id)
+              const p    = progressForLesson(progress, lesson.id)
+              const pct  = familyProgressPct(p, done, lesson.wordCount)
+              return (
                 <TouchableOpacity
-                  key={g.id}
-                  style={[styles.itemRow, i < completedGroupItems.length - 1 && styles.itemRowBorder]}
-                  onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                  key={lesson.id}
+                  style={[styles.itemRow, i < startedLessons.length - 1 && styles.itemRowBorder]}
+                  onPress={() => router.push(done ? ROUTES.REVIEW(lesson.id) : ROUTES.LESSON(lesson.id))}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                  <Text style={styles.itemPattern}>{lesson.pattern || '—'}</Text>
                   <View style={styles.itemMeta}>
                     <View style={styles.itemNameRow}>
-                      <Text style={styles.itemName}>{g.name}</Text>
-                      <Text style={styles.itemPctDone}>✓ done</Text>
+                      <Text style={styles.itemName} numberOfLines={1}>{lesson.title}</Text>
+                      <Text style={[styles.itemPct, done && styles.itemPctDone]}>
+                        {done ? '✓ done' : `${pct}%`}
+                      </Text>
                     </View>
                     <View style={styles.itemTrack}>
-                      <View style={[styles.itemFill, styles.itemFillDone, { width: '100%' }]} />
+                      <View style={[styles.itemFill, { width: `${pct}%` as `${number}%` }, done && styles.itemFillDone]} />
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
                 </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+              )
+            })}
+          </ProgressSection>
+        )}
+
+        {/* Vocabulary groups — collapsible */}
+        {vocabItems.length > 0 && (
+          <ProgressSection title="Vocabulary" emoji="📝" open={vocabOpen} onToggle={() => setVocabOpen((p) => !p)}>
+            {vocabItems.map((g, i) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.itemRow, i < vocabItems.length - 1 && styles.itemRowBorder]}
+                onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                <View style={styles.itemMeta}>
+                  <View style={styles.itemNameRow}>
+                    <Text style={styles.itemName}>{g.name}</Text>
+                    <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
+                      {g.done ? '✓ done' : `${g.wordCount} words`}
+                    </Text>
+                  </View>
+                  <View style={styles.itemTrack}>
+                    <View style={[styles.itemFill, g.done && styles.itemFillDone, { width: g.done ? '100%' : '0%' }]} />
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
+              </TouchableOpacity>
+            ))}
+          </ProgressSection>
+        )}
+
+        {/* Irregular Verbs — collapsible */}
+        {verbsItems.length > 0 && (
+          <ProgressSection title="Irregular Verbs" emoji="📖" open={verbsOpen} onToggle={() => setVerbsOpen((p) => !p)}>
+            {verbsItems.map((g, i) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.itemRow, i < verbsItems.length - 1 && styles.itemRowBorder]}
+                onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                <View style={styles.itemMeta}>
+                  <View style={styles.itemNameRow}>
+                    <Text style={styles.itemName}>{g.name}</Text>
+                    <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
+                      {g.done ? '✓ done' : `${g.wordCount} words`}
+                    </Text>
+                  </View>
+                  <View style={styles.itemTrack}>
+                    <View style={[styles.itemFill, g.done && styles.itemFillDone, { width: g.done ? '100%' : '0%' }]} />
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
+              </TouchableOpacity>
+            ))}
+          </ProgressSection>
+        )}
+
+        {/* Homophones — collapsible */}
+        {homoItems.length > 0 && (
+          <ProgressSection title="Homophones" emoji="🎯" open={homoOpen} onToggle={() => setHomoOpen((p) => !p)}>
+            {homoItems.map((g, i) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.itemRow, i < homoItems.length - 1 && styles.itemRowBorder]}
+                onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                <View style={styles.itemMeta}>
+                  <View style={styles.itemNameRow}>
+                    <Text style={styles.itemName}>{g.name}</Text>
+                    <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
+                      {g.done ? '✓ done' : `${g.wordCount} words`}
+                    </Text>
+                  </View>
+                  <View style={styles.itemTrack}>
+                    <View style={[styles.itemFill, g.done && styles.itemFillDone, { width: g.done ? '100%' : '0%' }]} />
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
+              </TouchableOpacity>
+            ))}
+          </ProgressSection>
         )}
 
         {/* Empty state */}
@@ -391,12 +530,6 @@ const styles = StyleSheet.create({
   toggleItemOn:  { backgroundColor: colors.surface },
   toggleText:    { fontSize: fontSize.sm, fontWeight: '500', color: colors.textMuted },
   toggleTextOn:  { color: colors.text, fontWeight: '600' },
-  pillRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  pill: {
-    backgroundColor: colors.primaryLight, borderRadius: radius.full,
-    paddingVertical: 5, paddingHorizontal: 12,
-  },
-  pillText: { fontSize: fontSize.sm, color: colors.primaryDark, fontWeight: '500' },
 
   scroll:   { flex: 1 },
   content:  { padding: spacing.lg, gap: spacing.md },
@@ -458,6 +591,15 @@ const styles = StyleSheet.create({
 
   // Sections (phonics / vocab)
   section:     { gap: 6 },
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+  },
+  sectionHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionEmoji: { fontSize: 16 },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: '600', color: colors.text },
   sectionEyebrow: {
     fontSize: 10, fontWeight: '600', color: colors.textMuted,
     letterSpacing: 0.8, textTransform: 'uppercase',

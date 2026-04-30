@@ -30,7 +30,7 @@ import { haptics } from '@/lib/haptics'
 const SCREEN_WIDTH = Dimensions.get('window').width
 
 function navigate() {
-  router.push('/(auth)/signup')
+  router.push('/(auth)/onboarding/notifications-permission')
 }
 
 export default function NameScreen() {

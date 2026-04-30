@@ -9,10 +9,11 @@ import { useNotifications } from '@/hooks/useNotifications'
 import { useAuthStore } from '@/store/authStore'
 import { useProfile } from '@/hooks/useProfile'
 import { useProgress } from '@/hooks/useProgress'
+import { useSubscription } from '@/hooks/useSubscription'
 import { useSettingsStore } from '@/store/settingsStore'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import { supabase } from '@/lib/supabase'
-import { LANGUAGES, languageByCode } from '@/lib/languages'
+import { LANGUAGES, languageByCode } from '@/data'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -166,10 +167,21 @@ export default function ProfileScreen() {
   const [langModalVisible, setLangModalVisible] = useState(false)
   const [timeModalVisible, setTimeModalVisible] = useState(false)
   const { requestPermission, scheduleReminder, cancelAll } = useNotifications()
+  const {
+    isPro, loading: subLoading,
+    referralCount, freeMonthsRemaining, referralsToNextMonth,
+    purchasePro, restorePurchases: restoreSub,
+  } = useSubscription()
 
   const wordsCount = useMemo(() => {
     const set = new Set<string>()
-    progress.forEach((p) => p.words_mastered?.forEach((w) => set.add(w)))
+    progress.forEach((p) => {
+      const wm = p.words_mastered
+      if (Array.isArray(wm)) wm.forEach((w) => set.add(w))
+      else if (typeof wm === 'string') {
+        try { JSON.parse(wm).forEach((w: string) => set.add(w)) } catch {}
+      }
+    })
     return set.size
   }, [progress])
 
@@ -386,18 +398,38 @@ export default function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Pro card ──────────────────────────────────────────────────── */}
-          <View style={styles.proCard}>
-            <View style={styles.proIconWrap}>
-              <Ionicons name="star" size={16} color="#fff" />
+          {isPro ? (
+            <View style={styles.proCard}>
+              <View style={[styles.proIconWrap, { backgroundColor: colors.primaryMid }]}>
+                <Ionicons name="checkmark" size={16} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.proTitle}>Pro active</Text>
+                <Text style={styles.proSub}>
+                  {freeMonthsRemaining > 0
+                    ? `${freeMonthsRemaining} free month${freeMonthsRemaining > 1 ? 's' : ''} remaining`
+                    : 'Unlimited lessons · pronunciation check'}
+                </Text>
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.proTitle}>Unlock Pro</Text>
-              <Text style={styles.proSub}>Unlimited lessons · pronunciation check</Text>
+          ) : (
+            <View style={styles.proCard}>
+              <View style={styles.proIconWrap}>
+                <Ionicons name="star" size={16} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.proTitle}>Unlock Pro</Text>
+                <Text style={styles.proSub}>
+                  {referralCount === 0
+                    ? `Invite ${referralsToNextMonth} friends for 1 free month, or tap upgrade`
+                    : `Invite ${referralsToNextMonth} more for 1 free month, or tap upgrade`}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.upgradeBtn} onPress={() => void purchasePro()} accessibilityLabel="Upgrade to Pro">
+                <Text style={styles.upgradeBtnText}>{subLoading ? '...' : 'upgrade'}</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.upgradeBtn} accessibilityLabel="Upgrade to Pro">
-              <Text style={styles.upgradeBtnText}>upgrade</Text>
-            </TouchableOpacity>
-          </View>
+          )}
 
           {/* ── Learning ──────────────────────────────────────────────────── */}
           <Text style={styles.sectionHeader}>Learning</Text>
@@ -605,8 +637,45 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          {/* ── Referrals ─────────────────────────────────────────────────── */}
+          <Text style={styles.sectionHeader}>Referrals</Text>
           <View style={styles.section}>
-            <TouchableOpacity style={[styles.row, styles.rowLast]} activeOpacity={0.7}>
+            <View style={[styles.row, styles.rowLast]}>
+              <View style={[styles.rowIcon, { backgroundColor: '#AF52DE' }]}>
+                <Ionicons name="people-outline" size={18} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowLabel}>Friends invited</Text>
+                <Text style={styles.rowValueSmall}>
+                  {referralCount} friend{referralCount !== 1 ? 's' : ''} signed up
+                  {freeMonthsRemaining > 0 ? ` · ${freeMonthsRemaining} free month${freeMonthsRemaining > 1 ? 's' : ''}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.referralShareBtn}
+                onPress={async () => {
+                  try {
+                    const { Share, Platform } = await import('react-native')
+                    const Linking = await import('expo-linking')
+                    const { data } = await supabase.from('user_profiles').select('referral_code').eq('id', user?.id).single()
+                    const code = (data as { referral_code?: string } | null)?.referral_code
+                    if (!code) return
+                    const inviteLink = Linking.default.createURL('/signup', { queryParams: { ref: code } })
+                    await Share.share({
+                      message: `Hey! I've been using PhonicsFlow to learn English phonics 📚\n\nDownload it using my invite link so we can study together 🙌\n\n👉 ${inviteLink}`,
+                      url: inviteLink,
+                      title: 'Join me on PhonicsFlow',
+                    })
+                  } catch {}
+                }}
+              >
+                <Ionicons name="share-outline" size={18} color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <TouchableOpacity style={[styles.row, styles.rowLast]} onPress={() => void restoreSub()} activeOpacity={0.7}>
               <View style={[styles.rowIcon, { backgroundColor: '#888780' }]}>
                 <Ionicons name="card-outline" size={18} color="#fff" />
               </View>
@@ -743,6 +812,12 @@ const styles = StyleSheet.create({
   dangerText: { color: colors.error },
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowValue: { fontSize: fontSize.sm, color: colors.textMuted },
+  rowValueSmall: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+  referralShareBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   // Inline picker panels
   pickerPanel: {

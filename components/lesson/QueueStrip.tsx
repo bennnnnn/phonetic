@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { ScrollView, View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
@@ -19,16 +20,35 @@ function getStatus(word: Word, currentId: string, masteredIds: string[], skipped
 }
 
 export default function QueueStrip({ words, currentId, masteredIds, skippedIds, onWordPress }: Props) {
-  const remaining = words.filter(
-    (w) => w.id !== currentId && !masteredIds.includes(w.id) && !skippedIds.includes(w.id)
-  ).length
+  const scrollRef = useRef<ScrollView>(null)
+
+  // Auto-scroll so the current word pill stays visible — only scrolls when
+  // the current pill would be beyond the right edge of the viewport
+  useEffect(() => {
+    const currentIdx = words.findIndex((w) => w.id === currentId)
+    if (currentIdx < 0) return
+
+    const pillWidth = 70
+    const gap = spacing.sm // 8
+    const paddingLeft = spacing.lg // 24
+    const screenWidth = 375 // rough iPhone SE width; fine for this estimate
+    const currentPillRight = currentIdx * (pillWidth + gap) + paddingLeft + pillWidth + 24 // 24 right padding
+
+    // Only scroll forward if the pill is past the visible area
+    if (currentPillRight > screenWidth) {
+      const offsetX = currentIdx * (pillWidth + gap) + paddingLeft - 60 // leave a few pills visible to the left
+      scrollRef.current?.scrollTo({ x: offsetX, animated: true })
+    }
+  }, [currentId, words.length])
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        up next — {remaining} remaining
-      </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
         {words.map((word) => {
           const isCurrent = word.id === currentId
           const status = getStatus(word, currentId, masteredIds, skippedIds)
@@ -77,14 +97,6 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.sm,
   },
-  label: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    paddingHorizontal: spacing.lg,
-  },
   scroll: {
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
@@ -93,31 +105,31 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: colors.neutral,
     borderRadius: radius.full,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   pillCurrent: {
     backgroundColor: colors.primary,
   },
   pillMastered: {
     backgroundColor: colors.primaryLight,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primaryMid,
   },
   pillSkipped: {
     backgroundColor: colors.neutral,
   },
   pillText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.md,
     color: colors.textMuted,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   pillTextCurrent: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '800',
   },
   pillTextMastered: {
     color: colors.primary,

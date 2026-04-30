@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   View,
   Text,
@@ -16,9 +16,18 @@ import {
 import * as Linking from 'expo-linking'
 import { router } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+} from 'react-native-reanimated'
+import { Ionicons } from '@expo/vector-icons'
 import { friendlyEmailAuthMessage, isEmailRateLimited } from '@/lib/authErrors'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { haptics } from '@/lib/haptics'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
 export default function LoginScreen() {
@@ -35,8 +44,65 @@ export default function LoginScreen() {
   const lastResetRequestAt = useRef(0)
   const RESET_COOLDOWN_MS = 90_000
 
+  // ── Entrance animations ──────────────────────────────────────────────
+  const heroY = useSharedValue(-20)
+  const heroOp = useSharedValue(0)
+
+  const formY = useSharedValue(30)
+  const formOp = useSharedValue(0)
+
+  const googleY = useSharedValue(16)
+  const googleOp = useSharedValue(0)
+
+  const fieldsY = useSharedValue(16)
+  const fieldsOp = useSharedValue(0)
+
+  const ctaOp = useSharedValue(0)
+
+  useEffect(() => {
+    heroY.value = withSpring(0, { damping: 14, stiffness: 110 })
+    heroOp.value = withTiming(1, { duration: 280 })
+
+    formY.value = withDelay(120, withSpring(0, { damping: 16, stiffness: 120 }))
+    formOp.value = withDelay(120, withTiming(1, { duration: 300 }))
+
+    googleY.value = withDelay(250, withSpring(0, { damping: 14, stiffness: 130 }))
+    googleOp.value = withDelay(250, withTiming(1, { duration: 250 }))
+
+    fieldsY.value = withDelay(330, withSpring(0, { damping: 14, stiffness: 130 }))
+    fieldsOp.value = withDelay(330, withTiming(1, { duration: 250 }))
+
+    ctaOp.value = withDelay(450, withTiming(1, { duration: 250 }))
+  }, [])
+
+  const heroStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: heroY.value }],
+    opacity: heroOp.value,
+  }))
+
+  const formStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: formY.value }],
+    opacity: formOp.value,
+  }))
+
+  const googleStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: googleY.value }],
+    opacity: googleOp.value,
+  }))
+
+  const fieldsStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: fieldsY.value }],
+    opacity: fieldsOp.value,
+  }))
+
+  const ctaStyle = useAnimatedStyle(() => ({
+    opacity: ctaOp.value,
+  }))
+
   const handleGoogle = () => {
-    Alert.alert('Google sign-in', 'Google authentication will be available in a future update.')
+    haptics.tap()
+    setError('Google sign-in will be available soon. Use email to get started!')
+    setTimeout(() => setError(null), 4000)
   }
 
   const openForgot = () => {
@@ -107,15 +173,17 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <View style={styles.hero}>
+          {/* ── Teal hero ─────────────────────────────────────────── */}
+          <Animated.View style={[styles.hero, heroStyle]}>
             <View style={styles.logoCard}>
               <Text style={styles.logoText}>Pf</Text>
             </View>
             <Text style={styles.appName}>PhonicsFlow</Text>
             <Text style={styles.tagline}>welcome back</Text>
-          </View>
+          </Animated.View>
 
-          <View style={styles.form}>
+          {/* ── Form ──────────────────────────────────────────────── */}
+          <Animated.View style={[styles.form, formStyle]}>
             <Text style={styles.headline}>Sign in</Text>
             <Text style={styles.sub}>Good to see you again.</Text>
 
@@ -125,84 +193,104 @@ export default function LoginScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle} accessibilityRole="button">
-              <View style={styles.googleIcon}>
-                <Text style={styles.googleG}>G</Text>
-              </View>
-              <Text style={styles.googleLabel}>Continue with Google</Text>
-            </TouchableOpacity>
+            {/* Google button */}
+            <Animated.View style={googleStyle}>
+              <TouchableOpacity
+                style={styles.googleBtn}
+                onPress={handleGoogle}
+                accessibilityRole="button"
+                activeOpacity={0.85}
+              >
+                <View style={styles.googleIcon}>
+                  <Text style={styles.googleG}>G</Text>
+                </View>
+                <Text style={styles.googleLabel}>Continue with Google</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
+            {/* Divider */}
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>or use email</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                placeholder="you@example.com"
-                placeholderTextColor={colors.textHint}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Password</Text>
-              <View style={styles.passwordRow}>
+            {/* Email + password fields */}
+            <Animated.View style={[fieldsStyle, { gap: spacing.md }]}>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Email</Text>
                 <TextInput
-                  style={[styles.input, styles.passwordInput]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="••••••••"
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
                   placeholderTextColor={colors.textHint}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
                 />
-                <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.showToggle}>
-                  <Text style={styles.showToggleText}>{showPassword ? 'hide' : 'show'}</Text>
-                </TouchableOpacity>
               </View>
-            </View>
 
-            <TouchableOpacity onPress={openForgot} accessibilityRole="link" accessibilityLabel="Forgot password">
-              <Text style={styles.forgot}>forgot password?</Text>
-            </TouchableOpacity>
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Password</Text>
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.textHint}
+                    secureTextEntry={!showPassword}
+                    autoComplete="password"
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.showToggle}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-            <TouchableOpacity
-              style={[styles.primaryBtn, loading && styles.disabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              accessibilityRole="button"
-              accessibilityLabel="Sign in"
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryBtnText}>sign in</Text>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity onPress={openForgot} accessibilityRole="link" accessibilityLabel="Forgot password">
+                <Text style={styles.forgot}>forgot password?</Text>
+              </TouchableOpacity>
+            </Animated.View>
 
-            <TouchableOpacity
-              onPress={() => router.replace('/(auth)/signup')}
-              accessibilityRole="link"
-              accessibilityLabel="Go to sign up"
-            >
-              <Text style={styles.switchText}>
-                {"Don't have an account? "}
-                <Text style={styles.switchLink}>sign up</Text>
-              </Text>
-            </TouchableOpacity>
-          </View>
+            {/* Sign in button */}
+            <Animated.View style={ctaStyle}>
+              <TouchableOpacity
+                style={[styles.primaryBtn, loading && styles.disabled]}
+                onPress={handleLogin}
+                disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in"
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>sign in</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.replace('/(auth)/signup')}
+                accessibilityRole="link"
+                accessibilityLabel="Go to sign up"
+              >
+                <Text style={styles.switchText}>
+                  {"Don't have an account? "}
+                  <Text style={styles.switchLink}>sign up</Text>
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ── Forgot password modal ─────────────────────────────────────── */}
+      {/* ── Forgot password modal ─────────────────────────────────── */}
       <Modal
         visible={forgotOpen}
         transparent
@@ -222,7 +310,10 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.input}
                 value={forgotEmail}
-                onChangeText={v => { setForgotEmail(v); setForgotMessage(null) }}
+                onChangeText={(v) => {
+                  setForgotEmail(v)
+                  setForgotMessage(null)
+                }}
                 placeholder="you@example.com"
                 placeholderTextColor={colors.textHint}
                 keyboardType="email-address"
@@ -238,10 +329,11 @@ export default function LoginScreen() {
                 onPress={handleSendReset}
                 disabled={forgotSending}
               >
-                {forgotSending
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.primaryBtnText}>Send reset link</Text>
-                }
+                {forgotSending ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>Send reset link</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cancelRow}
@@ -270,20 +362,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoCard: {
-    width: 40,
-    height: 40,
-    borderRadius: 11,
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   logoText: {
     fontFamily: 'Georgia',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '500',
     color: colors.primary,
   },
-  appName: { color: '#fff', fontSize: 16, fontWeight: '500' },
+  appName: { color: '#fff', fontSize: 18, fontWeight: '600', letterSpacing: -0.3 },
   tagline: { color: '#9FE1CB', fontSize: fontSize.sm },
   form: {
     flex: 1,
@@ -292,7 +389,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  headline: { fontSize: 20, fontWeight: '500', color: colors.text },
+  headline: { fontSize: 22, fontWeight: '600', color: colors.text, letterSpacing: -0.3 },
   sub: { fontSize: fontSize.md, color: colors.textMuted, marginTop: -8 },
   errorBox: {
     backgroundColor: colors.errorLight,
@@ -303,23 +400,24 @@ const styles = StyleSheet.create({
   googleBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
     backgroundColor: colors.surface,
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: 13,
-    paddingVertical: 13,
+    paddingVertical: 14,
     paddingHorizontal: 15,
   },
   googleIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  googleG: { fontSize: 12, fontWeight: '500', color: '#D85A30' },
+  googleG: { fontSize: 13, fontWeight: '600', color: '#D85A30' },
   googleLabel: { fontSize: fontSize.lg, fontWeight: '500', color: colors.text },
   dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 2 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
@@ -330,16 +428,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.borderLight,
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
     paddingHorizontal: 14,
     fontSize: fontSize.lg,
     color: colors.text,
     backgroundColor: colors.surface,
   },
   passwordRow: { position: 'relative' },
-  passwordInput: { paddingRight: 56 },
-  showToggle: { position: 'absolute', right: 14, top: 14 },
-  showToggleText: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500' },
+  passwordInput: { paddingRight: 44 },
+  showToggle: { position: 'absolute', right: 14, top: 13 },
   forgot: {
     fontSize: fontSize.md,
     color: colors.primary,
@@ -363,7 +460,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   resetHandle: {
-    width: 36, height: 4, borderRadius: 2,
+    width: 36,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: colors.border,
     alignSelf: 'center',
     marginBottom: spacing.sm,
@@ -375,10 +474,10 @@ const styles = StyleSheet.create({
   primaryBtn: {
     backgroundColor: colors.primary,
     borderRadius: 14,
-    paddingVertical: 13,
+    paddingVertical: 14,
     alignItems: 'center',
   },
-  primaryBtnText: { color: '#fff', fontSize: fontSize.lg, fontWeight: '500' },
+  primaryBtnText: { color: '#fff', fontSize: fontSize.lg, fontWeight: '600' },
   disabled: { opacity: 0.6 },
   switchText: {
     textAlign: 'center',
@@ -386,5 +485,5 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     marginTop: spacing.sm,
   },
-  switchLink: { color: colors.primary, fontWeight: '500' },
+  switchLink: { color: colors.primary, fontWeight: '600' },
 })

@@ -4,6 +4,17 @@ export function progressForLesson(progress: UserProgress[], lessonId: string) {
   return progress.find((p) => p.lesson_id === lessonId)
 }
 
+/** Safely get the length of words_mastered — could be array or JSON string from DB */
+function wordsMasteredLength(p: UserProgress | undefined): number {
+  if (!p) return 0
+  const m = p.words_mastered
+  if (Array.isArray(m)) return m.length
+  if (typeof m === 'string') {
+    try { return JSON.parse(m).length } catch { return 0 }
+  }
+  return 0
+}
+
 /** Bar width: completed → 100%; else from mastered / wordGoal. */
 export function familyProgressPct(
   p: UserProgress | undefined,
@@ -11,7 +22,7 @@ export function familyProgressPct(
   wordGoal: number
 ): number {
   if (completed || p?.completed) return 100
-  const n = p?.words_mastered?.length ?? 0
+  const n = wordsMasteredLength(p)
   if (n <= 0) return 0
   const goal = Math.max(1, wordGoal)
   return Math.min(95, Math.round((n / goal) * 100))

@@ -1,18 +1,20 @@
 import { useEffect } from 'react'
-import { Text } from 'react-native'
+import { Text, AppState } from 'react-native'
 import { Stack, router, useSegments } from 'expo-router'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useFonts } from 'expo-font'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { useSettingsStore } from '@/store/settingsStore'
+import { initRevenueCat } from '@/lib/revenuecat'
 import { soundEngine } from '@/lib/sounds'
+import { setHapticsEnabled } from '@/lib/haptics'
 
 
 export default function RootLayout() {
   const { setSession, session, loading } = useAuthStore()
   const segments = useSegments()
-  const { dyslexiaFont, largerText } = useSettingsStore()
+  const { dyslexiaFont, largerText, soundEnabled, hapticsEnabled } = useSettingsStore()
 
   const [fontsLoaded] = useFonts({
     'OpenDyslexic-Regular': require('../assets/fonts/OpenDyslexic-Regular.otf'),
@@ -30,6 +32,15 @@ export default function RootLayout() {
     T.defaultProps.style = Object.keys(style).length > 0 ? style : undefined
   }, [dyslexiaFont, largerText, fontsLoaded])
 
+  // Sync sound and haptic settings to the global engine singletons
+  useEffect(() => {
+    soundEngine.setMuted(!soundEnabled)
+  }, [soundEnabled])
+
+  useEffect(() => {
+    setHapticsEnabled(hapticsEnabled)
+  }, [hapticsEnabled])
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
@@ -40,6 +51,16 @@ export default function RootLayout() {
     })
 
     soundEngine.preload(['correct', 'wrong', 'tap', 'wordRevealed', 'lessonComplete', 'xpEarned'])
+
+    initRevenueCat()
+
+    // Register for push notifications on physical devices
+    ;(async () => {
+      try {
+        const { registerPushToken } = await import('@/lib/notifications')
+        await registerPushToken()
+      } catch {}
+    })()
 
     return () => subscription.unsubscribe()
   }, [])

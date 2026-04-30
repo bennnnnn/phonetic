@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/store/authStore'
+import { readCache, writeCache, CACHE_TYPES } from '@/lib/offlineCache'
 
 export type LessonDirectoryItem = {
   id: string
@@ -32,8 +34,19 @@ export function useLessonDirectory() {
   const [error, setError] = useState<string | null>(null)
 
   const refetch = useCallback(async () => {
+    const { user } = useAuthStore.getState()
     try {
-      setLoading(true)
+      // 1. Cache-first
+      if (user) {
+        const cached = await readCache<LessonDirectoryItem[]>(CACHE_TYPES.LESSON_DIRECTORY, user.id)
+        if (cached) {
+          setLessons(cached.data)
+          setLoading(false)
+          if (!cached.stale) return
+        }
+      }
+
+      if (!user) setLoading(true)
       setError(null)
 
       if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
@@ -84,24 +97,28 @@ export function useLessonDirectory() {
         }
       }
 
-      setLessons(
-        rows.map((row) => {
-          const fid = row.word_family_id
-          const fam = fid ? familyById[fid] : null
-          const wc = fid ? countByFamilyId[fid] ?? 0 : 0
-          return {
-            id: row.id,
-            title: row.title,
-            level: row.level,
-            pattern: fam?.pattern ?? '',
-            sound: fam?.sound ?? '',
-            wordCount: Math.max(1, wc),
-          }
-        })
-      )
+      const result = rows.map((row) => {
+        const fid = row.word_family_id
+        const fam = fid ? familyById[fid] : null
+        const wc = fid ? countByFamilyId[fid] ?? 0 : 0
+        return {
+          id: row.id,
+          title: row.title,
+          level: row.level,
+          pattern: fam?.pattern ?? '',
+          sound: fam?.sound ?? '',
+          wordCount: Math.max(1, wc),
+        }
+      })
+
+      setLessons(result)
+      // 2. Cache it (longer TTL — lesson directory rarely changes)
+      if (user) {
+        void writeCache(CACHE_TYPES.LESSON_DIRECTORY, user.id, result, 30 * 60 * 1000) // 30 min
+      }
     } catch (err) {
       setError(errorMessage(err))
-      setLessons([])
+      // Keep cached data if network fails
     } finally {
       setLoading(false)
     }
@@ -109,7 +126,7 @@ export function useLessonDirectory() {
 
   useEffect(() => {
     void refetch()
-  }, [refetch])
+  }, [])
 
   return { lessons, loading, error, refetch }
 }

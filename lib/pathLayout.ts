@@ -1,7 +1,7 @@
 import { spacing } from './tokens'
 
-export const NODE_SIZE   = 120
-export const NODE_GAP    = 56
+export const NODE_SIZE   = 100
+export const NODE_GAP    = 48
 export const NODE_STEP   = NODE_SIZE + NODE_GAP
 export const INITIAL_TOP = 20
 export const NUM_DOTS    = 4

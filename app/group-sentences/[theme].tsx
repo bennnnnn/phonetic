@@ -5,70 +5,16 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import * as Speech from 'expo-speech'
 import { useGroupLesson } from '@/hooks/useGroupLesson'
+import { useAudio } from '@/hooks/useAudio'
+import { buildPracticeSentences, buildWordByNorm } from '@/lib/sentenceHelpers'
 import { haptics } from '@/lib/haptics'
 import { ROUTES } from '@/lib/routes'
-import { WORD_THEMES } from '@/lib/practiceThemes'
+import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS } from '@/lib/practiceThemes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import SegmentedStepBar from '@/components/ui/SegmentedStepBar'
+import HighlightedSentence from '@/components/sentences/HighlightedSentence'
+import ErrorState from '@/components/ui/ErrorState'
 import type { Word } from '@/lib/types'
-
-function normWord(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '')
-}
-
-function splitToken(raw: string): { lead: string; core: string; trail: string } {
-  let i = 0
-  while (i < raw.length && !/[a-zA-Z0-9]/.test(raw[i]!)) i++
-  const lead = raw.slice(0, i)
-  let j = raw.length
-  while (j > i && !/[a-zA-Z0-9]/.test(raw[j - 1]!)) j--
-  return { lead, core: raw.slice(i, j), trail: raw.slice(j) }
-}
-
-function buildPracticeSentences(words: Word[]): string[] {
-  if (words.length === 0) return []
-  const t = words.map((w) => w.text)
-  const out: string[] = []
-  out.push(`Can you read this word: ${t[0]}?`)
-  if (t.length >= 2) out.push(`Look at ${t[0]} and ${t[1]}. Say each one slowly.`)
-  if (t.length >= 3) out.push(`Now read: ${t[0]}, ${t[1]}, and ${t[2]}.`)
-  if (t.length >= 4) out.push(`Try these together: ${t.slice(0, 4).join(', ')}.`)
-  if (t.length >= 5) out.push(`Great work with ${t[4]} and the rest!`)
-  return out.slice(0, 5)
-}
-
-function HighlightedSentence({
-  sentence, wordByNorm, onWordTap,
-}: {
-  sentence: string; wordByNorm: Map<string, Word>; onWordTap: (word: Word) => void
-}) {
-  const tokens = sentence.split(/\s+/).filter(Boolean)
-  return (
-    <Text style={styles.sentenceBlock}>
-      {tokens.map((raw, i) => {
-        const { lead, core, trail } = splitToken(raw)
-        const key = `${i}-${raw}`
-        const w = core ? wordByNorm.get(normWord(core)) : undefined
-        if (!w) {
-          return <Text key={key} style={styles.sentencePlain}>{i > 0 ? ' ' : ''}{raw}</Text>
-        }
-        return (
-          <Text key={key}>
-            {i > 0 ? ' ' : ''}
-            <Text style={styles.sentencePlain}>{lead}</Text>
-            <Text onPress={() => onWordTap(w)} accessibilityRole="link" style={styles.sentenceWordWrap}>
-              <Text style={{ fontFamily: 'Georgia' }}>
-                <Text style={styles.consonantInSentence}>{w.consonant}</Text>
-                <Text style={styles.patternInSentence}>{w.pattern}</Text>
-              </Text>
-            </Text>
-            <Text style={styles.sentencePlain}>{trail}</Text>
-          </Text>
-        )
-      })}
-    </Text>
-  )
-}
 
 export default function GroupSentencesScreen() {
   const { theme } = useLocalSearchParams<{ theme: string }>()
@@ -76,18 +22,16 @@ export default function GroupSentencesScreen() {
   const [sentenceIndex, setSentenceIndex] = useState(0)
   const [tappedWord, setTappedWord] = useState<Word | null>(null)
 
-  const themeData = WORD_THEMES[theme]
+  const themeData = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme]
   const title     = `${themeData?.emoji ?? '🗂'} ${theme}`
 
-  const wordByNorm = useMemo(() => {
-    const m = new Map<string, Word>()
-    for (const w of words) m.set(normWord(w.text), w)
-    return m
-  }, [words])
+  const wordByNorm = useMemo(() => buildWordByNorm(words), [words])
 
   const sentences   = useMemo(() => buildPracticeSentences(words), [words])
   const sentenceText = sentences[sentenceIndex] ?? ''
   const isLast       = sentences.length > 0 && sentenceIndex === sentences.length - 1
+
+  const { play: playTts } = useAudio()
 
   const handleWordTap = (word: Word) => {
     setTappedWord((prev) => (prev?.id === word.id ? null : word))
@@ -95,13 +39,18 @@ export default function GroupSentencesScreen() {
   }
 
   const handleHear = () => {
-    if (sentenceText) Speech.speak(sentenceText, { language: 'en-US', rate: 0.92 })
+    if (sentenceText) playTts('', sentenceText)
     haptics.tap()
   }
 
   const handleNext = () => {
     if (isLast) {
-      router.push(ROUTES.GROUP_QUIZ(theme))
+      // Homophones sound the same — skip the listen quiz, go straight to complete
+      if (HOMOPHONE_GROUPS[theme]) {
+        router.push(ROUTES.GROUP_COMPLETE(theme))
+      } else {
+        router.push(ROUTES.GROUP_QUIZ(theme))
+      }
     } else {
       setSentenceIndex((idx) => Math.min(idx + 1, sentences.length - 1))
       setTappedWord(null)
@@ -133,12 +82,7 @@ export default function GroupSentencesScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'No words found.'}</Text>
-          <TouchableOpacity onPress={() => router.back()} style={styles.hearBtn}>
-            <Text style={styles.hearBtnText}>Go back</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState message={error ?? 'No words found.'} />
       </SafeAreaView>
     )
   }
@@ -196,7 +140,11 @@ export default function GroupSentencesScreen() {
           <Text style={styles.navBackText}>← back</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navNext} onPress={handleNext} accessibilityRole="button">
-          <Text style={styles.navNextText}>{isLast ? 'go to quiz →' : 'next sentence →'}</Text>
+          <Text style={styles.navNextText}>
+            {isLast
+              ? (HOMOPHONE_GROUPS[theme] ? 'done →' : 'go to quiz →')
+              : 'next sentence →'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase, supabaseErrorMessage } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { readCache, writeCache, CACHE_TYPES } from '@/lib/offlineCache'
 import type { Session } from '@supabase/supabase-js'
 import type { UserProgress } from '@/lib/types'
 
@@ -30,42 +31,61 @@ function dedupeByLesson(rows: UserProgress[]): UserProgress[] {
 }
 
 export function useProgress(): UseProgressReturn {
-  const { user } = useAuthStore()
   const [progress, setProgress] = useState<UserProgress[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Keep refetch stable across renders — store latest fetch impl in a ref
+  const fetchRef = useRef<((userId?: string | null, forceNetwork?: boolean) => Promise<void>) | null>(null)
 
-  const fetchProgress = useCallback(async (userId?: string | null) => {
+  const fetchProgress = useCallback(async (userId?: string | null, forceNetwork = false) => {
+    const { user } = useAuthStore.getState()
     const id = userId ?? user?.id ?? null
     if (!id) {
       setProgress([])
       setLoading(false)
       return
     }
+
+    // 1. Cache-first (only on initial load, not on manual refetch)
+    if (!forceNetwork) {
+      const cached = await readCache<UserProgress[]>(CACHE_TYPES.USER_PROGRESS, id)
+      if (cached) {
+        setProgress(dedupeByLesson(cached.data))
+        setLoading(false)
+        if (!cached.stale) return
+      }
+    }
+
+    // 2. Network fetch
     try {
-      setLoading(true)
+      if (!forceNetwork) setLoading(true)
       setError(null)
 
       const { data, error: sbError } = await supabase.from('user_progress').select('*').eq('user_id', id)
 
       if (sbError) throw sbError
-      setProgress(dedupeByLesson((data as UserProgress[]) ?? []))
+      const deduped = dedupeByLesson((data as UserProgress[]) ?? [])
+      setProgress(deduped)
+      void writeCache(CACHE_TYPES.USER_PROGRESS, id, deduped)
     } catch (err) {
       setError(supabaseErrorMessage(err))
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [])
+
+  // Keep refetch stable — same reference always
+  const refetch = useCallback(() => fetchProgress(undefined, true), [])
 
   useEffect(() => {
     void fetchProgress()
-  }, [fetchProgress])
+  }, [])
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
-      if (session?.user?.id) void fetchProgress(session.user.id)
+      if (session?.user?.id) void fetchProgress(session.user.id, true)
       else {
         setProgress([])
         setLoading(false)
@@ -73,10 +93,10 @@ export function useProgress(): UseProgressReturn {
       }
     })
     return () => subscription.unsubscribe()
-  }, [fetchProgress])
+  }, [])
 
   const completedLessonIds = progress.filter((p) => p.completed).map((p) => p.lesson_id)
   const totalXP = progress.reduce((sum, p) => sum + (p.xp_earned || 0), 0)
 
-  return { progress, completedLessonIds, totalXP, loading, error, refetch: fetchProgress }
+  return { progress, completedLessonIds, totalXP, loading, error, refetch }
 }

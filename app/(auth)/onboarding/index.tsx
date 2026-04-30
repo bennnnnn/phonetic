@@ -149,7 +149,7 @@ export default function OnboardingIndex() {
             style={styles.cta}
             onPress={() => router.push('/(auth)/onboarding/how-it-works')}
           >
-            <Text style={styles.ctaText}>show me the code →</Text>
+            <Text style={styles.ctaText}>show me how it works</Text>
           </Pressable>
         </Animated.View>
       </Animated.View>

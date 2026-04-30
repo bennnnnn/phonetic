@@ -1,99 +1,66 @@
-import { Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native'
-import Animated, { useSharedValue, withSpring, useAnimatedStyle } from 'react-native-reanimated'
-import { colors, radius, fontSize, spacing } from '@/lib/tokens'
+import { Pressable, Text, StyleSheet, View } from 'react-native'
+import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
 type Props = {
-  label: string
+  title: string
   onPress: () => void
-  variant?: 'primary' | 'secondary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
-  loading?: boolean
   disabled?: boolean
+  icon?: React.ReactNode
+  fullWidth?: boolean
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
-
-export default function Button({
-  label,
-  onPress,
-  variant = 'primary',
-  size = 'md',
-  loading = false,
-  disabled = false,
-}: Props) {
-  const scale = useSharedValue(1)
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }))
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 20 })
-  }
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 20 })
-  }
-
-  const isDisabled = disabled || loading
-
+export default function Button({ title, onPress, variant = 'primary', size = 'md', disabled, icon, fullWidth }: Props) {
   return (
-    <AnimatedPressable
+    <Pressable
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={isDisabled}
-      style={[
+      disabled={disabled}
+      style={({ pressed }) => [
         styles.base,
         styles[variant],
-        styles[size],
-        isDisabled && styles.disabled,
-        animatedStyle,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: isDisabled }}
+        styles[`size_${size}` as keyof typeof styles],
+        fullWidth && styles.fullWidth,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
+      ] as any}
     >
-      {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#fff' : colors.primary} size="small" />
-      ) : (
-        <Text style={[styles.label, styles[`${variant}Label`], styles[`${size}Label`]]}>
-          {label}
-        </Text>
-      )}
-    </AnimatedPressable>
+      {icon ? <View style={styles.iconWrap}>{icon}</View> : null}
+      <Text style={[styles.text, styles[`text_${variant}` as keyof typeof styles], disabled && styles.textDisabled]}>
+        {title}
+      </Text>
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   base: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
     borderRadius: radius.md,
   },
+
   // Variants
-  primary: {
-    backgroundColor: colors.primary,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
+  primary:   { backgroundColor: colors.primary },
+  secondary: { backgroundColor: colors.neutral },
+  ghost:     { backgroundColor: 'transparent' },
+  danger:    { backgroundColor: colors.error },
+
   // Sizes
-  sm: { paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
-  md: { paddingVertical: spacing.sm + 4, paddingHorizontal: spacing.lg },
-  lg: { paddingVertical: spacing.md, paddingHorizontal: spacing.xl },
-  // Labels
-  label: { fontWeight: '600' },
-  primaryLabel: { color: '#fff' },
-  secondaryLabel: { color: colors.primary },
-  ghostLabel: { color: colors.primary },
-  smLabel: { fontSize: fontSize.sm },
-  mdLabel: { fontSize: fontSize.md },
-  lgLabel: { fontSize: fontSize.lg },
-  // Disabled
-  disabled: { opacity: 0.5 },
+  size_sm: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
+  size_md: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
+  size_lg: { paddingVertical: 14, paddingHorizontal: spacing.xl },
+
+  fullWidth: { flex: 1 },
+
+  pressed: { opacity: 0.85 },
+  disabled: { opacity: 0.4 },
+
+  iconWrap: { marginRight: 2 },
+
+  text: { fontWeight: '700' },
+  text_primary:   { color: '#fff' },
+  text_secondary: { color: colors.text },
+  text_ghost:     { color: colors.primary },
+  text_danger:    { color: '#fff' },
+  textDisabled:   { color: colors.textMuted },
 })

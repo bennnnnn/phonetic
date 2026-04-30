@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { levelFromTotalXp } from '@/lib/xpLevel'
+import { updateStreak } from '@/lib/streak'
+import { nextReviewDate } from '@/lib/spacedRep'
 
 type SaveProgressInput = {
   lessonId: string
@@ -34,34 +36,6 @@ async function syncProfileTotalXp(userId: string, displayName: string) {
   }
 }
 
-async function ensureLeagueMembership(userId: string, weeklyXp: number) {
-  const { data: existing } = await supabase.from('league_members').select('id').eq('user_id', userId).maybeSingle()
-  if (existing) return
-
-  // Find a Teal league (tier_id=1) with room for more members
-  const { data: tealLeagues } = await supabase.from('leagues').select('id').eq('tier_id', 1)
-
-  let leagueId: string | null = null
-  for (const league of tealLeagues ?? []) {
-    const { count } = await supabase
-      .from('league_members')
-      .select('*', { count: 'exact', head: true })
-      .eq('league_id', league.id)
-    if ((count ?? 0) < 25) {
-      leagueId = league.id
-      break
-    }
-  }
-
-  if (!leagueId) {
-    const { data: newLeague, error: leagueErr } = await supabase.from('leagues').insert({ tier_id: 1 }).select('id').single()
-    if (leagueErr) throw leagueErr
-    leagueId = newLeague!.id
-  }
-
-  await supabase.from('league_members').insert({ league_id: leagueId, user_id: userId, weekly_xp: weeklyXp, rank: 0, movement: 0 })
-}
-
 export function useSaveProgress(): UseSaveProgressReturn {
   const { user } = useAuthStore()
   const [saving, setSaving] = useState(false)
@@ -73,6 +47,18 @@ export function useSaveProgress(): UseSaveProgressReturn {
       setSaving(true)
       setError(null)
 
+      // Determine repetition count for this lesson
+      let repetitions = 0
+      try {
+        const { data: existingRows } = await supabase
+          .from('user_progress')
+          .select('repetitions')
+          .eq('user_id', user.id)
+          .eq('lesson_id', input.lessonId)
+          .maybeSingle()
+        repetitions = ((existingRows as { repetitions?: number } | null)?.repetitions ?? 0) + 1
+      } catch { /* default to 1 */ }
+
       const { error: sbError } = await supabase.from('user_progress').upsert(
         {
           user_id: user.id,
@@ -83,11 +69,20 @@ export function useSaveProgress(): UseSaveProgressReturn {
           words_mastered: input.wordsMastered ?? [],
           words_skipped: input.wordsSkipped ?? [],
           completed_at: new Date().toISOString(),
+          next_review_at: nextReviewDate(repetitions).toISOString(),
+          repetitions,
         },
         { onConflict: 'user_id,lesson_id' }
       )
 
       if (sbError) throw sbError
+
+      // Update streak based on last completion date
+      try {
+        await updateStreak(user.id)
+      } catch (streakErr) {
+        console.warn('[useSaveProgress] updateStreak', streakErr)
+      }
 
       const displayName =
         (user.user_metadata?.display_name as string | undefined) ?? user.email?.split('@')[0] ?? 'Learner'
@@ -98,17 +93,6 @@ export function useSaveProgress(): UseSaveProgressReturn {
         console.warn('[useSaveProgress] syncProfileTotalXp', syncErr)
       }
 
-      try {
-        await ensureLeagueMembership(user.id, input.xpEarned)
-      } catch (leagueErr) {
-        console.warn('[useSaveProgress] ensureLeagueMembership', leagueErr)
-      }
-
-      const { error: rpcError } = await supabase.rpc('increment_weekly_xp', {
-        target_user_id: user.id,
-        xp_amount: input.xpEarned,
-      })
-      if (rpcError) console.warn('[useSaveProgress] increment_weekly_xp', rpcError.message)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save progress')
     } finally {

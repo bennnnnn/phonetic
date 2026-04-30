@@ -1,8 +1,5 @@
+import { AppState, Platform } from 'react-native'
 import { useCallback } from 'react'
-
-// NOTE: expo-notifications' push-token auto-registration crashes Expo Go.
-// Local notification scheduling is wired up here and will activate in a
-// production / custom dev-client build. All functions are safe no-ops until then.
 
 function parseTime(timeStr: string): { hour: number; minute: number } {
   const [timePart = '8:00', meridiem = 'AM'] = timeStr.split(' ')
@@ -14,9 +11,36 @@ function parseTime(timeStr: string): { hour: number; minute: number } {
   return { hour, minute }
 }
 
+async function tryRegisterPushToken(): Promise<string | null> {
+  try {
+    const { default: Constants } = await import('expo-constants')
+    const Notif = await import('expo-notifications')
+    if (!Constants.isDevice) {
+      console.warn('[Push] Push tokens only work on physical devices')
+      return null
+    }
+    const { status: existingStatus } = await Notif.getPermissionsAsync()
+    let finalStatus = existingStatus
+    if (existingStatus !== 'granted') {
+      const { status } = await Notif.requestPermissionsAsync()
+      finalStatus = status
+    }
+    if (finalStatus !== 'granted') {
+      console.warn('[Push] Permission not granted')
+      return null
+    }
+    const tokenData = await Notif.getExpoPushTokenAsync({
+      projectId: Constants.expoConfig?.extra?.eas?.projectId,
+    })
+    return tokenData.data
+  } catch (err) {
+    console.warn('[Push] Token registration failed', err)
+    return null
+  }
+}
+
 async function trySchedule(timeStr: string): Promise<void> {
   try {
-    // Dynamic import so the module is never evaluated at startup
     const Notif = await import('expo-notifications')
     await Notif.cancelAllScheduledNotificationsAsync()
     const { hour, minute } = parseTime(timeStr)
@@ -58,5 +82,6 @@ export function useNotifications() {
   const requestPermission = useCallback(() => tryRequestPermission(), [])
   const scheduleReminder  = useCallback((t: string) => trySchedule(t), [])
   const cancelAll         = useCallback(() => tryCancel(), [])
-  return { requestPermission, scheduleReminder, cancelAll }
+  const registerPush      = useCallback(() => tryRegisterPushToken(), [])
+  return { requestPermission, scheduleReminder, cancelAll, registerPush }
 }

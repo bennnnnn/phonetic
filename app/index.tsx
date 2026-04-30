@@ -19,9 +19,10 @@ export default function Index() {
     return <Redirect href="/(tabs)/home" />
   }
 
-  return <Redirect href="/(auth)/welcome" />
+  // Show animated splash, which auto-advances to onboarding
+  return <Redirect href="/(auth)/splash" />
 }
 
 const styles = StyleSheet.create({
-  boot: { flex: 1, backgroundColor: colors.primary },
+  boot: { flex: 1, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
 })

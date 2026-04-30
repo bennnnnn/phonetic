@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
-  ScrollView, View, Text, TouchableOpacity, Pressable,
-  StyleSheet, Alert, RefreshControl, ActivityIndicator,
+  ScrollView, View, Text, TouchableOpacity,
+  StyleSheet, Alert, RefreshControl,
   useWindowDimensions,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
@@ -16,11 +16,21 @@ import { useProgress } from '@/hooks/useProgress'
 import { useProfile } from '@/hooks/useProfile'
 import { useLessonDirectory, type LessonDirectoryItem } from '@/hooks/useLessonDirectory'
 import { useGroupProgress } from '@/hooks/useGroupProgress'
+import { useLessonStore } from '@/store/lessonStore'
 import { ROUTES } from '@/lib/routes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
+import { soundEngine } from '@/lib/sounds'
+import Skeleton from '@/components/ui/Skeleton'
+import ChapterHeader from '@/components/home/ChapterHeader'
+import CollapsibleSection from '@/components/home/CollapsibleSection'
+import LessonNode from '@/components/home/LessonNode'
+import { NewUserGuide } from '@/components/home/NewUserGuide'
+import { NotificationBell } from '@/components/ui/NotificationBell'
 import { progressForLesson } from '@/lib/lessonProgress'
-import { GROUP_NODES } from '@/lib/practiceThemes'
-import { NODE_SIZE, NODE_STEP, DOT_SIZE, WAVE, PALETTE, buildDots } from '@/lib/pathLayout'
+import { GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
+import { NODE_SIZE, NODE_STEP, WAVE, PALETTE, DOT_SIZE, buildDots } from '@/lib/pathLayout'
+import { GroupSection, useGroupSectionData } from '@/components/home/GroupSection'
+import type { ChapterData } from '@/components/home/ChapterHeader'
 import type { UserProgress } from '@/lib/types'
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -41,308 +51,22 @@ function getGreeting() {
   return 'Good evening'
 }
 
+function wordsLen(prog: UserProgress | undefined): number {
+  if (!prog) return 0
+  const m = prog.words_mastered
+  if (Array.isArray(m)) return m.length
+  if (typeof m === 'string') {
+    try { return JSON.parse(m).length } catch { return 0 }
+  }
+  return 0
+}
+
 function starsFor(prog: UserProgress | undefined, wordCount: number, done: boolean): number {
   if (done) return 3
-  const m = prog?.words_mastered?.length ?? 0
+  const m = wordsLen(prog)
   if (m === 0) return 0
   return m < wordCount / 2 ? 1 : 2
 }
-
-// ── Chapter header ────────────────────────────────────────────────────────────
-
-type ChapterData = {
-  id: string; emoji: string; name: string; subtitle: string
-  accentColor: string; completed: number; total: number
-  comingSoon: boolean
-}
-
-const ChapterHeader = memo(function ChapterHeader({
-  item, expanded, onPress,
-}: {
-  item: ChapterData; expanded?: boolean; onPress?: () => void
-}) {
-  const pct        = item.total > 0 ? item.completed / item.total : 0
-  const chevronRot = useSharedValue(expanded ? 1 : 0)
-
-  useEffect(() => {
-    chevronRot.value = withSpring(expanded ? 1 : 0, { damping: 14, stiffness: 200 })
-  }, [expanded])
-
-  const chevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${chevronRot.value * 180}deg` }],
-  }))
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={item.comingSoon || !onPress}
-      activeOpacity={0.85}
-    >
-      <View style={[styles.chapterCard, { borderLeftColor: item.accentColor }, item.comingSoon && styles.chapterCardSoon]}>
-        <View style={[styles.chapterIcon, { backgroundColor: item.accentColor + '22' }]}>
-          <Text style={styles.chapterEmoji}>{item.emoji}</Text>
-        </View>
-        <View style={styles.chapterBody}>
-          <View style={styles.chapterRow}>
-            <Text style={[styles.chapterName, item.comingSoon && styles.chapterNameMuted]}>
-              {item.name}
-            </Text>
-            <View style={styles.chapterMeta}>
-              {item.comingSoon ? (
-                <View style={styles.soonBadge}><Text style={styles.soonText}>soon</Text></View>
-              ) : item.total > 0 ? (
-                <Text style={[styles.chapterCount, { color: item.accentColor }]}>
-                  {item.completed}/{item.total}
-                </Text>
-              ) : null}
-              {!item.comingSoon && (
-                <Animated.View style={chevronStyle}>
-                  <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-                </Animated.View>
-              )}
-            </View>
-          </View>
-          <Text style={styles.chapterSub}>{item.subtitle}</Text>
-          {!item.comingSoon && item.total > 0 && (
-            <View style={styles.chapterTrack}>
-              <View style={[styles.chapterFill, { width: `${pct * 100}%` as `${number}%`, backgroundColor: item.accentColor }]} />
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  )
-})
-
-// ── Collapsible section ───────────────────────────────────────────────────────
-
-const CollapsibleSection = memo(function CollapsibleSection({
-  expanded, sectionHeight, children,
-}: {
-  expanded: boolean; sectionHeight: number; children: React.ReactNode
-}) {
-  const animH = useSharedValue(expanded ? sectionHeight : 0)
-
-  useEffect(() => {
-    animH.value = withSpring(expanded ? sectionHeight : 0, {
-      damping: 22, stiffness: 160, mass: 1,
-    })
-  }, [expanded, sectionHeight])
-
-  const style = useAnimatedStyle(() => ({ height: animH.value }))
-
-  return (
-    <Animated.View style={[styles.sectionWrap, style]}>
-      {children}
-    </Animated.View>
-  )
-})
-
-// ── Stars ─────────────────────────────────────────────────────────────────────
-
-function Stars({ filled }: { filled: number }) {
-  return (
-    <View style={styles.starsRow}>
-      {[0, 1, 2].map((i) => (
-        <Ionicons key={i}
-          name={i < filled ? 'star' : 'star-outline'}
-          size={11}
-          color={i < filled ? '#FFD700' : 'rgba(255,255,255,0.4)'}
-        />
-      ))}
-    </View>
-  )
-}
-
-// ── Lesson node ───────────────────────────────────────────────────────────────
-
-const LessonNode = memo(function LessonNode({
-  lesson, index, left, top, done, unlocked, isCurrent, stars, expanded, onPress,
-}: {
-  lesson: LessonDirectoryItem
-  index: number; left: number; top: number
-  done: boolean; unlocked: boolean; isCurrent: boolean; stars: number
-  expanded: boolean
-  onPress: () => void
-}) {
-  const pressed   = useSharedValue(0)
-  const cascadeY  = useSharedValue(-28)
-  const cascadeOp = useSharedValue(0)
-  const glowScale = useSharedValue(1)
-  const palette   = done
-    ? { bg: colors.primary, shadow: colors.primaryDark }
-    : unlocked ? PALETTE[index % PALETTE.length]! : { bg: '#C5C3BC', shadow: '#9C9A92' }
-
-  useEffect(() => {
-    if (expanded) {
-      cascadeY.value  = -28
-      cascadeOp.value = 0
-      cascadeY.value  = withDelay(index * 55, withSpring(0, { damping: 14, stiffness: 180 }))
-      cascadeOp.value = withDelay(index * 55, withTiming(1, { duration: 220 }))
-    } else {
-      cascadeY.value  = withTiming(-28, { duration: 160 })
-      cascadeOp.value = withTiming(0, { duration: 160 })
-    }
-  }, [expanded])
-
-  useEffect(() => {
-    if (isCurrent) {
-      glowScale.value = withRepeat(
-        withSequence(withSpring(1.18, { damping: 8 }), withSpring(1, { damping: 8 })),
-        -1, false,
-      )
-    }
-  }, [isCurrent])
-
-  const cascadeStyle = useAnimatedStyle(() => ({
-    opacity: cascadeOp.value,
-    transform: [{ translateY: cascadeY.value }],
-  }))
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(pressed.value * 4, { damping: 12, stiffness: 400 }) }],
-  }))
-  const glowStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glowScale.value }],
-    opacity: withSpring(isCurrent ? 0.35 : 0),
-  }))
-
-  return (
-    <Animated.View style={[styles.nodeOuter, { left, top }, cascadeStyle]}>
-      <Animated.View style={[styles.glowRing, { backgroundColor: palette.bg }, glowStyle]} pointerEvents="none" />
-      <Pressable
-        onPressIn={() => { if (unlocked || done) pressed.value = 1 }}
-        onPressOut={() => { pressed.value = 0 }}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={done ? `Review ${lesson.title}` : unlocked ? `Open ${lesson.title}` : `${lesson.title} is locked`}
-      >
-        <View style={[styles.nodeShadow, { backgroundColor: palette.shadow }]} />
-        <Animated.View style={[
-          styles.nodeBody, { backgroundColor: palette.bg },
-          !unlocked && !done && styles.nodeBodyLocked, pressStyle,
-        ]}>
-          {!unlocked && !done && (
-            <View style={styles.lockBadge} pointerEvents="none">
-              <Ionicons name="lock-closed" size={11} color="#fff" />
-            </View>
-          )}
-          {done && (
-            <View style={styles.doneBadge} pointerEvents="none">
-              <Ionicons name="checkmark" size={11} color={colors.primary} />
-            </View>
-          )}
-          <Text style={[styles.nodePattern, !unlocked && !done && styles.nodePatternMuted]}
-            adjustsFontSizeToFit numberOfLines={1}>
-            {(lesson.pattern || lesson.title).replace(/^-/, '')}
-          </Text>
-          <Stars filled={done ? 3 : stars} />
-        </Animated.View>
-      </Pressable>
-      {isCurrent && (
-        <View style={styles.tooltip}>
-          <View style={styles.tooltipBubble}>
-            <Text style={styles.tooltipText}>{stars > 0 ? 'continue →' : 'start →'}</Text>
-          </View>
-          <View style={styles.tooltipArrow} />
-        </View>
-      )}
-    </Animated.View>
-  )
-})
-
-// ── Group node ────────────────────────────────────────────────────────────────
-
-const GroupNode = memo(function GroupNode({
-  emoji, name, index, left, top, done, unlocked, isCurrent, expanded, onPress,
-}: {
-  emoji: string; name: string
-  index: number; left: number; top: number
-  done: boolean; unlocked: boolean; isCurrent: boolean
-  expanded: boolean
-  onPress: () => void
-}) {
-  const pressed   = useSharedValue(0)
-  const cascadeY  = useSharedValue(-28)
-  const cascadeOp = useSharedValue(0)
-  const glowScale = useSharedValue(1)
-  const palette   = done
-    ? { bg: colors.primary, shadow: colors.primaryDark }
-    : unlocked ? PALETTE[index % PALETTE.length]! : { bg: '#C5C3BC', shadow: '#9C9A92' }
-
-  useEffect(() => {
-    if (expanded) {
-      cascadeY.value  = -28
-      cascadeOp.value = 0
-      cascadeY.value  = withDelay(index * 55, withSpring(0, { damping: 14, stiffness: 180 }))
-      cascadeOp.value = withDelay(index * 55, withTiming(1, { duration: 220 }))
-    } else {
-      cascadeY.value  = withTiming(-28, { duration: 160 })
-      cascadeOp.value = withTiming(0, { duration: 160 })
-    }
-  }, [expanded])
-
-  useEffect(() => {
-    if (isCurrent) {
-      glowScale.value = withRepeat(
-        withSequence(withSpring(1.18, { damping: 8 }), withSpring(1, { damping: 8 })),
-        -1, false,
-      )
-    }
-  }, [isCurrent])
-
-  const cascadeStyle = useAnimatedStyle(() => ({
-    opacity: cascadeOp.value,
-    transform: [{ translateY: cascadeY.value }],
-  }))
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(pressed.value * 4, { damping: 12, stiffness: 400 }) }],
-  }))
-  const glowStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glowScale.value }],
-    opacity: withSpring(isCurrent ? 0.35 : 0),
-  }))
-
-  return (
-    <Animated.View style={[styles.nodeOuter, { left, top }, cascadeStyle]}>
-      <Animated.View style={[styles.glowRing, { backgroundColor: palette.bg }, glowStyle]} pointerEvents="none" />
-      <Pressable
-        onPressIn={() => { if (unlocked || done) pressed.value = 1 }}
-        onPressOut={() => { pressed.value = 0 }}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={done ? `Review ${name}` : unlocked ? `Start ${name}` : `${name} is locked`}
-      >
-        <View style={[styles.nodeShadow, { backgroundColor: palette.shadow }]} />
-        <Animated.View style={[
-          styles.nodeBody, { backgroundColor: palette.bg },
-          !unlocked && !done && styles.nodeBodyLocked, pressStyle,
-        ]}>
-          {!unlocked && !done && (
-            <View style={styles.lockBadge} pointerEvents="none">
-              <Ionicons name="lock-closed" size={11} color="#fff" />
-            </View>
-          )}
-          {done && (
-            <View style={styles.doneBadge} pointerEvents="none">
-              <Ionicons name="checkmark" size={11} color={colors.primary} />
-            </View>
-          )}
-          <Text style={styles.groupEmoji}>{emoji}</Text>
-          <Text style={[styles.groupName, !unlocked && !done && styles.groupNameMuted]}
-            adjustsFontSizeToFit numberOfLines={1}>{name}</Text>
-        </Animated.View>
-      </Pressable>
-      {isCurrent && (
-        <View style={styles.tooltip}>
-          <View style={styles.tooltipBubble}>
-            <Text style={styles.tooltipText}>start →</Text>
-          </View>
-          <View style={styles.tooltipArrow} />
-        </View>
-      )}
-    </Animated.View>
-  )
-})
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
@@ -353,16 +77,43 @@ export default function HomeScreen() {
   const { completedLessonIds, totalXP, progress, loading: progressLoading, refetch: refetchProgress } = useProgress()
   const { profile, refetch: refetchProfile } = useProfile()
   const { lessons, loading: lessonsLoading, refetch: refetchLessons } = useLessonDirectory()
-  const { completedGroups, refetch: refetchGroups } = useGroupProgress()
+  const { completedGroups: groupProgressCompleted, refetch: refetchGroups } = useGroupProgress()
+  const { groupNeedsRefresh, completedGroups: storeCompleted } = useLessonStore()
 
-  const [phonicsExpanded, setPhonicsExpanded] = useState(true)
-  const [vocabExpanded,   setVocabExpanded]   = useState(true)
+  // Merge: server data (slow) + local store (instant)
+  const completedGroups = useMemo(() =>
+    [...new Set([...groupProgressCompleted, ...storeCompleted])],
+  [groupProgressCompleted, storeCompleted])
+
+  const [phonicsExpanded, setPhonicsExpanded] = useState(false)
+  const [vocabExpanded,   setVocabExpanded]   = useState(false)
+  const [verbsExpanded,   setVerbsExpanded]   = useState(false)
+  const [homoExpanded,    setHomoExpanded]    = useState(false)
+  const [showGuide,       setShowGuide]       = useState(true)
+  const [focusTick,       setFocusTick]       = useState(0)
   const scrollRef     = useRef<ScrollView>(null)
   const didInitScroll = useRef(false)
 
   const displayName = profile?.display_name || (user?.user_metadata?.display_name as string | undefined) || 'Learner'
   const streak      = profile?.streak_days ?? 0
   const xp          = profile?.total_xp ?? totalXP
+  const totalWords  = useMemo(
+    () => progress.reduce((sum, p) => {
+      const m = p.words_mastered
+      if (Array.isArray(m)) return sum + m.length
+      if (typeof m === 'string') {
+        try {
+          const parsed = JSON.parse(m)
+          return sum + (Array.isArray(parsed) ? parsed.length : 0)
+        } catch { return sum }
+      }
+      return sum
+    }, 0),
+    [progress],
+  )
+
+  const isNewUser = !progressLoading && !lessonsLoading && completedLessonIds.length === 0 && completedGroups.length === 0
+  const statsReady = !progressLoading && !lessonsLoading
 
   // Node left positions are relative to the section container (scrollContent has paddingHorizontal: spacing.lg)
   const availableWidth = width - spacing.lg * 2 - NODE_SIZE
@@ -389,35 +140,44 @@ export default function HomeScreen() {
   }, [sortedLessons, completedLessonIds])
 
   const heroLessonIdx = useMemo(() => {
-    const ip = sortedLessons.findIndex((l) =>
-      !completedLessonIds.includes(l.id) &&
-      (progressForLesson(progress, l.id)?.words_mastered?.length ?? 0) > 0
-    )
+    // First: find an incomplete lesson with in-progress progress that is unlocked
+    const ip = sortedLessons.findIndex((l) => {
+      if (completedLessonIds.includes(l.id)) return false
+      if (!unlockedLessonIds.has(l.id)) return false
+      const p = progressForLesson(progress, l.id)
+      if (!p) return false
+      const wm = p.words_mastered
+      if (Array.isArray(wm)) return wm.length > 0
+      if (typeof wm === 'string') {
+        try { return JSON.parse(wm).length > 0 } catch { return false }
+      }
+      return false
+    })
     if (ip >= 0) return ip
-    const f = sortedLessons.findIndex((l) => !completedLessonIds.includes(l.id))
+    // Fallback: first unlocked, incomplete lesson
+    const f = sortedLessons.findIndex((l) => !completedLessonIds.includes(l.id) && unlockedLessonIds.has(l.id))
     return f >= 0 ? f : null
-  }, [sortedLessons, progress, completedLessonIds])
+  }, [sortedLessons, progress, completedLessonIds, unlockedLessonIds])
 
   const heroLessonId = heroLessonIdx !== null ? (sortedLessons[heroLessonIdx]?.id ?? null) : null
 
   // ── Vocabulary data ───────────────────────────────────────────────────────
 
-  const unlockedGroupNames = useMemo(() => {
-    const set = new Set<string>()
-    GROUP_NODES.forEach((g, i) => {
-      if (i === 0 || completedGroups.includes(GROUP_NODES[i - 1]!.id)) set.add(g.id)
-    })
-    return set
-  }, [completedGroups])
+  const vocabSection = useGroupSectionData(GROUP_NODES, completedGroups, availableWidth)
 
-  const heroGroupIdx = useMemo(() => {
-    const idx = GROUP_NODES.findIndex((g) => !completedGroups.includes(g.id))
-    return idx >= 0 ? idx : null
-  }, [completedGroups])
+  // ── Irregular verbs data ────────────────────────────────────────────────
 
-  const heroGroupId = heroGroupIdx !== null ? (GROUP_NODES[heroGroupIdx]?.id ?? null) : null
+  const verbsSection = useGroupSectionData(IRREGULAR_VERB_NODES, completedGroups, availableWidth)
 
-  // ── Path items (positions relative to their section container) ────────────
+  // ── Homophones data ───────────────────────────────────────────────────
+
+  const homoSection = useGroupSectionData(HOMOPHONE_NODES, completedGroups, availableWidth)
+
+  // ══ Hero IDs for scroll targeting ══════════════════════════════════════════
+
+  const heroGroupIdx = vocabSection.heroIdx
+
+  // ── Phonics path items ─────────────────────────────────────────────────────
 
   const phonicsItems = useMemo(() =>
     sortedLessons.map((lesson, i) => {
@@ -434,31 +194,16 @@ export default function HomeScreen() {
     }),
   [sortedLessons, completedLessonIds, unlockedLessonIds, heroLessonId, progress, availableWidth])
 
-  const vocabItems = useMemo(() =>
-    GROUP_NODES.map((g, i) => {
-      const done     = completedGroups.includes(g.id)
-      const unlocked = unlockedGroupNames.has(g.id) || done
-      return {
-        id: g.id, emoji: g.emoji, name: g.name, index: i,
-        left: Math.round(availableWidth * WAVE[i % WAVE.length]!),
-        top:  SECTION_TOP_PAD + i * NODE_STEP,
-        done, unlocked,
-        isCurrent: g.id === heroGroupId,
-      }
-    }),
-  [completedGroups, unlockedGroupNames, heroGroupId, availableWidth])
-
   const phonicsDots = useMemo(() => buildDots(phonicsItems), [phonicsItems])
-  const vocabDots   = useMemo(() => buildDots(vocabItems),   [vocabItems])
 
   const phonicsSectionH = calcSectionHeight(sortedLessons.length)
-  const vocabSectionH   = calcSectionHeight(GROUP_NODES.length)
 
   // ── Chapter data (dynamic — updates when lessons/groups are added) ─────────
 
   const phonicsChapter = useMemo<ChapterData>(() => ({
-    id: 'phonics', emoji: '📚', name: 'Phonics',
-    subtitle: 'Word patterns · sound-spelling rules',
+    id: 'phonics', name: 'Phonics',
+    subtitle: '',
+    wordCount: sortedLessons.reduce((s, l) => s + (l.wordCount ?? 0), 0),
     accentColor: colors.primary,
     completed: completedLessonIds.length,
     total: sortedLessons.length,
@@ -466,54 +211,116 @@ export default function HomeScreen() {
   }), [completedLessonIds.length, sortedLessons.length])
 
   const vocabChapter = useMemo<ChapterData>(() => ({
-    id: 'vocabulary', emoji: '📝', name: 'Vocabulary',
-    subtitle: 'Travel · Food · Nature · Feelings · more',
+    id: 'vocabulary', name: 'Vocabulary',
+    subtitle: '',
+    wordCount: GROUP_NODES.reduce((s, g) => s + g.wordCount, 0),
     accentColor: '#5856D6',
-    completed: completedGroups.length,
+    completed: GROUP_NODES.filter((g) => completedGroups.includes(g.id)).length,
     total: GROUP_NODES.length,
     comingSoon: false,
-  }), [completedGroups.length])
+  }), [completedGroups])
 
-  const irregularChapter: ChapterData = {
-    id: 'irregular-verbs', emoji: '📖', name: 'Irregular Verbs',
-    subtitle: 'In development — coming soon',
-    accentColor: colors.textHint,
-    completed: 0, total: 0, comingSoon: true,
-  }
+  const verbsChapter = useMemo<ChapterData>(() => ({
+    id: 'irregular-verbs', name: 'Irregular Verbs',
+    subtitle: '',
+    wordCount: IRREGULAR_VERB_NODES.reduce((s, g) => s + g.wordCount, 0),
+    accentColor: '#AF52DE',
+    completed: IRREGULAR_VERB_NODES.filter((g) => completedGroups.includes(g.id)).length,
+    total: IRREGULAR_VERB_NODES.length,
+    comingSoon: false,
+  }), [completedGroups])
+
+  const homoChapter = useMemo<ChapterData>(() => ({
+    id: 'homophones', name: 'Homophones',
+    subtitle: '',
+    wordCount: HOMOPHONE_NODES.reduce((s, g) => s + g.wordCount, 0),
+    accentColor: '#FF9500',
+    completed: HOMOPHONE_NODES.filter((g) => completedGroups.includes(g.id)).length,
+    total: HOMOPHONE_NODES.length,
+    comingSoon: false,
+  }), [completedGroups])
 
   // ── Scroll to hero ────────────────────────────────────────────────────────
 
   const scrollToHero = useCallback((
-    section: 'phonics' | 'vocab',
-    currentPhonicsExpanded: boolean,
+    section: 'phonics' | 'vocab' | 'verbs' | 'homo',
+    expandedStates: { phonics: boolean; vocab: boolean; verbs: boolean; homo: boolean },
     delay = 700,
   ) => {
     setTimeout(() => {
-      let y = 0
-      if (section === 'phonics' && heroLessonIdx !== null) {
-        y = CHAPTER_HEIGHT + SECTION_TOP_PAD + heroLessonIdx * NODE_STEP - 80
-      } else if (section === 'vocab' && heroGroupIdx !== null) {
-        const phonicsH = currentPhonicsExpanded ? phonicsSectionH : 0
-        y = CHAPTER_HEIGHT + phonicsH + spacing.md + CHAPTER_HEIGHT + SECTION_TOP_PAD + heroGroupIdx * NODE_STEP - 80
+      const sectionHeights: Record<string, number> = {
+        phonics: phonicsSectionH,
+        vocab:   calcSectionHeight(GROUP_NODES.length),
+        verbs:   calcSectionHeight(IRREGULAR_VERB_NODES.length),
+        homo:    calcSectionHeight(HOMOPHONE_NODES.length),
+      }
+      const heroIndices: Record<string, number | null> = {
+        phonics: heroLessonIdx,
+        vocab:   vocabSection.heroIdx,
+        verbs:   verbsSection.heroIdx,
+        homo:    homoSection.heroIdx,
+      }
+
+      // Calculate Y offset: sum up heights of all sections before this one, plus hero position within section
+      let y = CHAPTER_HEIGHT + SECTION_TOP_PAD
+      const sections: ('phonics' | 'vocab' | 'verbs' | 'homo')[] = ['phonics', 'vocab', 'verbs', 'homo']
+      for (const s of sections) {
+        if (s === section) {
+          const heroIdx = heroIndices[s]
+          if (heroIdx !== null) y += heroIdx * NODE_STEP - 80
+          break
+        }
+        if (expandedStates[s]) y += sectionHeights[s] + spacing.md
+        else y += 80 + spacing.md // just chapter header height when collapsed
       }
       scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true })
     }, delay)
-  }, [heroLessonIdx, heroGroupIdx, phonicsSectionH])
+  }, [heroLessonIdx, vocabSection.heroIdx, verbsSection.heroIdx, homoSection.heroIdx, phonicsSectionH])
+
+  const scrollToFirstLesson = useCallback(() => {
+    const y = CHAPTER_HEIGHT + SECTION_TOP_PAD - 40
+    scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true })
+  }, [])
 
   useEffect(() => {
     if (didInitScroll.current) return
-    if (heroLessonIdx === null && heroGroupIdx === null) return
+    if (heroLessonIdx === null && heroGroupIdx === null &&
+        verbsSection.heroIdx === null && homoSection.heroIdx === null) return
     didInitScroll.current = true
-    if (heroLessonIdx !== null) scrollToHero('phonics', true, 600)
-    else scrollToHero('vocab', true, 600)
-  }, [heroLessonIdx, heroGroupIdx, scrollToHero])
+    const states = { phonics: true, vocab: true, verbs: true, homo: true }
+    if (heroLessonIdx !== null) scrollToHero('phonics', states, 600)
+    else if (vocabSection.heroIdx !== null) scrollToHero('vocab', states, 600)
+    else if (verbsSection.heroIdx !== null) scrollToHero('verbs', states, 600)
+    else scrollToHero('homo', states, 600)
+  }, [heroLessonIdx, heroGroupIdx, vocabSection.heroIdx, verbsSection.heroIdx, homoSection.heroIdx, scrollToHero])
 
   useFocusEffect(useCallback(() => {
+    setFocusTick((t) => t + 1)
     void refetchProgress()
     void refetchProfile()
     void refetchLessons()
     void refetchGroups()
   }, [refetchProgress, refetchProfile, refetchLessons, refetchGroups]))
+
+  // Force-refetch group progress whenever focus tick changes (extra safety net)
+  useEffect(() => {
+    if (focusTick > 0) void refetchGroups()
+  }, [focusTick])
+
+  // Re-fetch group progress when the complete screen flags it
+  useEffect(() => {
+    if (groupNeedsRefresh) {
+      void refetchGroups()
+      useLessonStore.getState().resetLesson()
+    }
+  }, [groupNeedsRefresh])
+
+  // Preload welcome sound for new users
+  useEffect(() => {
+    if (isNewUser) {
+      soundEngine.preload(['welcome'])
+    }
+  }, [isNewUser])
 
   const onLessonPress = (lesson: LessonDirectoryItem) => {
     if (!unlockedLessonIds.has(lesson.id) && !completedLessonIds.includes(lesson.id)) {
@@ -525,19 +332,53 @@ export default function HomeScreen() {
 
   const listLoading = progressLoading || lessonsLoading
 
+  // Track if user is returning (has content but no active session today)
+  const isReturning = !isNewUser && streak === 0 && totalWords > 0
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      {/* First-time guide overlay — full screen, outside scroll */}
+      {isNewUser && showGuide && (
+        <NewUserGuide
+          name={displayName}
+          onDismiss={() => {
+            setShowGuide(false)
+            soundEngine.play('welcome')
+          }}
+          onAutoTapPhonics={() => {
+            if (!phonicsExpanded) {
+              setPhonicsExpanded(true)
+            }
+          }}
+        />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.greetingBlock}>
           <Text style={styles.greetingLine}>{getGreeting()},</Text>
           <Text style={styles.displayName} numberOfLines={1}>{displayName}</Text>
         </View>
-        <View style={styles.statsChip}>
-          <Text style={styles.statItem}>🔥 {streak}</Text>
-          <View style={styles.statDot} />
-          <Text style={styles.statItem}>⚡ {xp} XP</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{statsReady ? streak : '-'}</Text>
+            <Text style={styles.statLabel}>Days</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{statsReady ? totalWords : '-'}</Text>
+            <Text style={styles.statLabel}>Words</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{statsReady ? xp : '-'}</Text>
+            <Text style={styles.statLabel}>XP</Text>
+          </View>
         </View>
+        <NotificationBell onNavigate={(route) => {
+          if (route === '/(tabs)/friends') router.push('/(tabs)/friends')
+          if (route === '/(tabs)/profile') router.push('/(tabs)/profile')
+          if (route === '/(tabs)/progress') router.push('/(tabs)/progress')
+          if (route === '/(tabs)/home') return
+        }} />
       </View>
 
       <ScrollView
@@ -555,11 +396,16 @@ export default function HomeScreen() {
       >
         {listLoading && !lessons.length ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator color={colors.primary} />
-            <Text style={styles.loadingText}>Loading your path…</Text>
+            <Skeleton width="100%" height={80} borderRadius={radius.xl} />
+            <View style={{ height: spacing.md }} />
+            <Skeleton width="100%" height={80} borderRadius={radius.xl} />
+            <View style={{ height: spacing.md }} />
+            <Skeleton width="100%" height={80} borderRadius={radius.xl} />
           </View>
         ) : (
           <>
+            <View style={styles.sectionSpacer} />
+
             {/* ── Phonics ──────────────────────────────────────────────── */}
             <ChapterHeader
               item={phonicsChapter}
@@ -567,7 +413,10 @@ export default function HomeScreen() {
               onPress={() => {
                 const next = !phonicsExpanded
                 setPhonicsExpanded(next)
-                if (next) scrollToHero('phonics', true)
+                if (next) scrollToHero('phonics', {
+                  phonics: true, vocab: vocabExpanded,
+                  verbs: verbsExpanded, homo: homoExpanded,
+                })
               }}
             />
             <CollapsibleSection expanded={phonicsExpanded} sectionHeight={phonicsSectionH}>
@@ -577,7 +426,7 @@ export default function HomeScreen() {
               {phonicsItems.map((item) => (
                 <LessonNode
                   key={item.lesson.id}
-                  lesson={item.lesson} index={item.index}
+                  pattern={item.lesson.pattern || item.lesson.title} index={item.index}
                   left={item.left} top={item.top}
                   done={item.done} unlocked={item.unlocked} isCurrent={item.isCurrent}
                   stars={item.stars}
@@ -589,42 +438,77 @@ export default function HomeScreen() {
 
             <View style={styles.sectionSpacer} />
 
-            {/* ── Vocabulary ───────────────────────────────────────────── */}
-            <ChapterHeader
-              item={vocabChapter}
-              expanded={vocabExpanded}
-              onPress={() => {
-                const next = !vocabExpanded
-                setVocabExpanded(next)
-                if (next) scrollToHero('vocab', phonicsExpanded)
+            {/* ── Group sections (vocab, verbs, homophones) ───────────────── */}
+            <GroupSection
+              config={{
+                key: 'vocab',
+                chapter: vocabChapter,
+                nodes: GROUP_NODES,
+                completedGroups,
+                expanded: vocabExpanded,
+                onToggle: () => {
+                  const next = !vocabExpanded
+                  setVocabExpanded(next)
+                  if (next) scrollToHero('vocab', {
+                    phonics: phonicsExpanded, vocab: true,
+                    verbs: verbsExpanded, homo: homoExpanded,
+                  })
+                },
+                showLockedAlert: true,
               }}
+              items={vocabSection.items}
+              expanded={vocabExpanded}
+              availableWidth={availableWidth}
+              onNavigate={(id, done) => router.push(done ? ROUTES.GROUP_REVIEW(id) : ROUTES.GROUP_LESSON(id))}
             />
-            <CollapsibleSection expanded={vocabExpanded} sectionHeight={vocabSectionH}>
-              {vocabDots.map((d) => (
-                <View key={`v-${d.key}`} style={[styles.dot, { left: d.x, top: d.y, opacity: d.opacity }]} />
-              ))}
-              {vocabItems.map((item) => (
-                <GroupNode
-                  key={item.id}
-                  emoji={item.emoji} name={item.name}
-                  index={item.index} left={item.left} top={item.top}
-                  done={item.done} unlocked={item.unlocked} isCurrent={item.isCurrent}
-                  expanded={vocabExpanded}
-                  onPress={() => {
-                    if (!item.unlocked) {
-                      Alert.alert('Locked', 'Complete the previous topic to unlock this one.')
-                      return
-                    }
-                    router.push(ROUTES.GROUP_LESSON(item.id))
-                  }}
-                />
-              ))}
-            </CollapsibleSection>
 
             <View style={styles.sectionSpacer} />
 
-            {/* ── Coming soon ──────────────────────────────────────────── */}
-            <ChapterHeader item={irregularChapter} />
+            <GroupSection
+              config={{
+                key: 'verbs',
+                chapter: verbsChapter,
+                nodes: IRREGULAR_VERB_NODES,
+                completedGroups,
+                expanded: verbsExpanded,
+                onToggle: () => {
+                  const next = !verbsExpanded
+                  setVerbsExpanded(next)
+                  if (next) scrollToHero('verbs', {
+                    phonics: phonicsExpanded, vocab: vocabExpanded,
+                    verbs: true, homo: homoExpanded,
+                  })
+                },
+              }}
+              items={verbsSection.items}
+              expanded={verbsExpanded}
+              availableWidth={availableWidth}
+              onNavigate={(id, done) => router.push(done ? ROUTES.GROUP_REVIEW(id) : ROUTES.GROUP_LESSON(id))}
+            />
+
+            <View style={styles.sectionSpacer} />
+
+            <GroupSection
+              config={{
+                key: 'homo',
+                chapter: homoChapter,
+                nodes: HOMOPHONE_NODES,
+                completedGroups,
+                expanded: homoExpanded,
+                onToggle: () => {
+                  const next = !homoExpanded
+                  setHomoExpanded(next)
+                  if (next) scrollToHero('homo', {
+                    phonics: phonicsExpanded, vocab: vocabExpanded,
+                    verbs: verbsExpanded, homo: true,
+                  })
+                },
+              }}
+              items={homoSection.items}
+              expanded={homoExpanded}
+              availableWidth={availableWidth}
+              onNavigate={(id, done) => router.push(done ? ROUTES.GROUP_REVIEW(id) : ROUTES.GROUP_LESSON(id))}
+            />
           </>
         )}
       </ScrollView>
@@ -645,53 +529,30 @@ const styles = StyleSheet.create({
   greetingBlock: { gap: 1 },
   greetingLine:  { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500' },
   displayName:   { fontSize: fontSize.xl, fontWeight: '700', color: colors.text },
-  statsChip: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    backgroundColor: colors.neutral, borderRadius: radius.full,
-    paddingVertical: 7, paddingHorizontal: spacing.md,
-    borderWidth: 1, borderColor: colors.border,
+  statsRow: {
+    flexDirection: 'row', gap: 6,
   },
-  statItem: { fontSize: fontSize.sm, fontWeight: '600', color: colors.text },
-  statDot:  { width: 3, height: 3, borderRadius: 2, backgroundColor: colors.border },
+  statCard: {
+    alignItems: 'center', gap: 1,
+    paddingVertical: 4, paddingHorizontal: 8,
+    minWidth: 48,
+  },
+  statIcon: { fontSize: 14, lineHeight: 18 },
+  statValue: { fontSize: fontSize.sm, fontWeight: '700', color: colors.text },
+  statLabel: { fontSize: 8, color: colors.textMuted, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.3 },
 
   scroll:        { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  loadingWrap:   { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.lg },
+  loadingWrap:   { gap: spacing.md, padding: spacing.lg, paddingTop: spacing.xl },
   loadingText:   { fontSize: fontSize.sm, color: colors.textMuted },
 
-  // Chapter card (normal flow, not absolute)
-  chapterCard: {
-    height: CHAPTER_HEIGHT,
-    backgroundColor: colors.surface, borderRadius: radius.xl, borderLeftWidth: 4,
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: spacing.sm, paddingHorizontal: spacing.md, gap: spacing.sm,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }, elevation: 2,
-  },
-  chapterCardSoon:  { opacity: 0.45 },
-  chapterIcon: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-  },
-  chapterEmoji:     { fontSize: 22 },
-  chapterBody:      { flex: 1, gap: 2 },
-  chapterRow:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chapterName:      { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
-  chapterNameMuted: { color: colors.textMuted },
-  chapterMeta:      { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chapterCount:     { fontSize: fontSize.sm, fontWeight: '700' },
-  chapterSub:       { fontSize: fontSize.xs, color: colors.textMuted },
-  chapterTrack:     { height: 4, borderRadius: 2, backgroundColor: colors.neutral, marginTop: 3, overflow: 'hidden' },
-  chapterFill:      { height: '100%', borderRadius: 2 },
-  soonBadge: {
-    backgroundColor: colors.neutral, borderRadius: radius.full,
-    paddingVertical: 2, paddingHorizontal: 8, borderWidth: 1, borderColor: colors.border,
-  },
-  soonText: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: '600' },
-
-  // Collapsible section — clips nodes during expand/collapse
-  sectionWrap:   { overflow: 'hidden', position: 'relative' },
   sectionSpacer: { height: spacing.md },
+  returnBanner: {
+    backgroundColor: colors.primaryLight,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
+  },
+  returnText: { fontSize: fontSize.sm, color: colors.primaryDark, fontWeight: '500' },
 
   // Dots
   dot: {
@@ -700,44 +561,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textHint,
   },
 
-  // Nodes
-  nodeOuter: { position: 'absolute', width: NODE_SIZE },
-  glowRing: {
-    position: 'absolute', width: NODE_SIZE + 24, height: NODE_SIZE + 24,
-    borderRadius: (NODE_SIZE + 24) / 2, top: -12, left: -12,
-  },
-  nodeShadow: {
-    position: 'absolute', top: 5, left: 0, right: 0, bottom: -5,
-    borderRadius: NODE_SIZE / 2,
-  },
-  nodeBody: {
-    width: NODE_SIZE, height: NODE_SIZE, borderRadius: NODE_SIZE / 2,
-    alignItems: 'center', justifyContent: 'center', gap: 4, padding: 10,
-  },
-  nodeBodyLocked: { opacity: 0.6 },
-  lockBadge: {
-    position: 'absolute', top: 7, right: 7, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.30)', alignItems: 'center', justifyContent: 'center',
-  },
-  doneBadge: {
-    position: 'absolute', top: 7, right: 7, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
-  },
-  nodePattern:      { fontFamily: 'Georgia', fontSize: 30, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  nodePatternMuted: { color: 'rgba(255,255,255,0.55)' },
-  starsRow:         { flexDirection: 'row', gap: 2, marginTop: 2 },
-  groupEmoji:       { fontSize: 32, lineHeight: 38 },
-  groupName:        { fontSize: 13, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  groupNameMuted:   { color: 'rgba(255,255,255,0.55)' },
-  tooltip: { alignItems: 'center', marginTop: 6 },
-  tooltipBubble: {
-    backgroundColor: colors.text, borderRadius: radius.full,
-    paddingVertical: 4, paddingHorizontal: 12,
-  },
-  tooltipText:  { fontSize: 11, color: '#fff', fontWeight: '600' },
-  tooltipArrow: {
-    width: 8, height: 6,
-    borderLeftWidth: 4, borderRightWidth: 4, borderTopWidth: 6, borderBottomWidth: 0,
-    borderLeftColor: 'transparent', borderRightColor: 'transparent', borderTopColor: colors.text,
-  },
+  statItem: { fontSize: fontSize.sm, fontWeight: '600', color: colors.text },
+  statDot:  { width: 3, height: 3, borderRadius: 2, backgroundColor: colors.border },
 })

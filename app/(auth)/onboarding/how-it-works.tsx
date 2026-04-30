@@ -16,7 +16,7 @@ import { haptics } from '@/lib/haptics'
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 const PATTERN = 'ake'
-const PHONEME = '/eɪk/'
+const PHONEME = 'ayk' // simple respelling
 
 const CONSONANTS = [
   { letter: 'b',  def: 'to cook something in an oven' },
@@ -139,7 +139,7 @@ export default function HowItWorks() {
   }))
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       {/* ── Teal hero ─────────────────────────────────────────────────── */}
       <View style={styles.hero}>
         <Text style={styles.heroEyebrow}>TAP A LETTER</Text>
@@ -207,7 +207,7 @@ export default function HowItWorks() {
             onPress={() => router.push('/(auth)/onboarding/goal')}
             activeOpacity={0.85}
           >
-            <Text style={styles.ctaText}>keep going →</Text>
+            <Text style={styles.ctaText}>got it, keep going</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>

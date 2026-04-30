@@ -5,8 +5,10 @@ export type Word = {
   pattern: string
   definition: string
   phoneme: string
+  pronunciation: string
   audio_url: string
   slow_audio_url: string
+  pastText?: string
 }
 
 export type WordFamily = {
@@ -52,14 +54,4 @@ export type UserProfile = {
 
 export type WordStatus = 'unseen' | 'mastered' | 'skipped'
 
-export type LeagueTier = 'Teal' | 'Gold' | 'Diamond' | 'Master'
-
-export type LeagueMember = {
-  id: string
-  user_id: string
-  display_name: string
-  weekly_xp: number
-  rank: number
-  movement: number
-  streak_days: number
-}
+export type LeagueTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond'

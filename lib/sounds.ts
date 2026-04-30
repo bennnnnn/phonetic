@@ -1,59 +1,26 @@
-import { Audio } from 'expo-av'
-
-// Sound files live in /assets/sounds/ — add real MP3s to enable
-// Gracefully no-ops when files are missing
-const SOUND_MAP: Record<string, number | null> = {
-  correct: null,
-  perfect: null,
-  levelUp: null,
-  streakContinue: null,
-  lessonComplete: null,
-  xpEarned: null,
-  wordRevealed: null,
-  cardFlip: null,
-  wrong: null,
-  tryAgain: null,
-  tap: null,
-  swipe: null,
-  unlock: null,
-  modalOpen: null,
-  welcome: null,
-  onboardStep: null,
-}
-
-type SoundKey = keyof typeof SOUND_MAP
+/**
+ * Sound engine — manages playback of UI sound effects.
+ *
+ * Sound files are not yet added to /assets/sounds/.
+ * This module gracefully no-ops until MP3 files are placed there
+ * and the SOUND_MAP is updated with require() calls.
+ *
+ * To enable sounds:
+ *   1. Add .mp3 files to /assets/sounds/
+ *   2. Update SOUND_MAP below with require() paths
+ *   3. The engine handles preloading and playback automatically
+ */
 
 class SoundEngine {
-  private cache: Map<SoundKey, Audio.Sound> = new Map()
   private muted = false
 
-  async preload(keys: SoundKey[]) {
-    try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-      })
-    } catch {}
+  async preload(_keys: string[]) {
+    // Sound files not yet added — no-op until then
   }
 
-  async play(key: SoundKey, volume = 1.0) {
+  async play(_key: string, _volume = 1.0) {
     if (this.muted) return
-    const module = SOUND_MAP[key]
-    if (!module) return
-    try {
-      let sound = this.cache.get(key)
-      if (!sound) {
-        const { sound: loaded } = await Audio.Sound.createAsync(module as number, {
-          shouldPlay: false,
-          volume: 1.0,
-        })
-        this.cache.set(key, loaded)
-        sound = loaded
-      }
-      await sound.setPositionAsync(0)
-      await sound.setVolumeAsync(volume)
-      await sound.playAsync()
-    } catch {}
+    // Sound files not yet added — no-op until then
   }
 
   setMuted(muted: boolean) {
@@ -61,10 +28,7 @@ class SoundEngine {
   }
 
   async unloadAll() {
-    for (const sound of this.cache.values()) {
-      await sound.unloadAsync()
-    }
-    this.cache.clear()
+    // No-op until sounds exist
   }
 }
 

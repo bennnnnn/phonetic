@@ -1,6 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native'
-import Button from './Button'
-import { colors, spacing, fontSize } from '@/lib/tokens'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
 type Props = {
   message: string
@@ -12,7 +11,9 @@ export default function ErrorState({ message, onRetry }: Props) {
     <View style={styles.container}>
       <Text style={styles.message}>{message}</Text>
       {onRetry && (
-        <Button label="Try again" onPress={onRetry} variant="secondary" size="sm" />
+        <TouchableOpacity style={styles.retryBtn} onPress={onRetry} activeOpacity={0.85}>
+          <Text style={styles.retryText}>Try again</Text>
+        </TouchableOpacity>
       )}
     </View>
   )
@@ -30,5 +31,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: fontSize.md,
     textAlign: 'center',
+  },
+  retryBtn: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.full,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  retryText: {
+    color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: '700',
   },
 })
