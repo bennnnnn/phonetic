@@ -68,7 +68,6 @@ export const LANGUAGES: Language[] = [
   { code: 'uk', label: 'Ukrainian',            flag: '🇺🇦' },
   { code: 'ur', label: 'Urdu',                 flag: '🇵🇰' },
   { code: 'vi', label: 'Vietnamese',           flag: '🇻🇳' },
-  { code: 'cy', label: 'Welsh',                flag: '🏴󠁧󠁢󠁷󠁬󠁳󠁿' },
   { code: 'yo', label: 'Yoruba',               flag: '🇳🇬' },
   { code: 'zu', label: 'Zulu',                 flag: '🇿🇦' },
 ]
