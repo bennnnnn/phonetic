@@ -13,7 +13,7 @@ import { transcribeAudio } from '@/lib/whisper'
 import { haptics } from '@/lib/haptics'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import { WORD_PRONUNCIATIONS } from '@/data/vocabThemes'
-import { WORD_EMOJI } from '@/data/wordEmoji'
+import { WORD_EXAMPLES } from '@/data/examples'
 import type { Word } from '@/lib/types'
 
 type Props = {
@@ -28,6 +28,7 @@ export default function WordRow({ word, index }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const startTimeRef = useRef(0)
   const mountedRef = useRef(true)
+  const isProverb = word.id.startsWith('proverb:')
 
   useEffect(() => {
     return () => { mountedRef.current = false }
@@ -104,17 +105,22 @@ export default function WordRow({ word, index }: Props) {
   const anim = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ translateX: tx.value }] }))
 
   const pronunciation = word.pronunciation || WORD_PRONUNCIATIONS[word.text.toLowerCase()] || word.phoneme
-  const emoji = WORD_EMOJI[word.text.toLowerCase()]
 
   return (
     <Animated.View style={[styles.row, anim]}>
-      <View style={styles.rowMain}>
+      <View style={[styles.rowMain, isProverb && { alignItems: 'flex-start' }]}>
         <Pressable style={styles.wordBlock} onPress={() => setExpanded(e => !e)}>
-          <Text style={styles.word} adjustsFontSizeToFit numberOfLines={1}>
-            <Text style={styles.con}>{word.consonant}</Text>
-            <Text style={styles.pat}>{word.pattern}</Text>
-          </Text>
-          {pronunciation !== word.text && pronunciation !== word.pattern && (
+          {isProverb ? (
+            <Text style={[styles.word, { fontSize: 16, lineHeight: 22 }]} numberOfLines={0}>
+              {word.text}
+            </Text>
+          ) : (
+            <Text style={styles.word} adjustsFontSizeToFit numberOfLines={1}>
+              <Text style={styles.con}>{word.consonant}</Text>
+              <Text style={styles.pat}>{word.pattern}</Text>
+            </Text>
+          )}
+          {!isProverb && pronunciation !== word.text && pronunciation !== word.pattern && (
             <Text style={styles.pronunciation}>{pronunciation}</Text>
           )}
         </Pressable>
@@ -142,10 +148,32 @@ export default function WordRow({ word, index }: Props) {
 
       {expanded && (
         <View style={styles.defRow}>
-          {emoji && <Text style={styles.defEmoji}>{emoji}</Text>}
-          {word.definition ? (
-            <Text style={styles.definition}>{word.definition}</Text>
-          ) : null}
+          <View style={styles.defTextBlock}>
+            {word.definition ? (
+              <Text style={isProverb ? styles.defHint : styles.definition}>
+                {'  •  '}{word.definition}
+              </Text>
+            ) : null}
+            {(() => {
+              const key = word.text.toLowerCase()
+              const examples = WORD_EXAMPLES[key]
+              if (!examples) return null
+              const example = examples[0]
+              // Highlight the word in the example
+              const regex = new RegExp(`\\b(${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+              const parts = example.split(regex)
+              return (
+                <Text style={styles.exampleText}>
+                  {'  •  '}
+                  {parts.map((part, i) =>
+                    part.toLowerCase() === key
+                      ? <Text key={i} style={styles.highlightedWord}>{part}</Text>
+                      : <Text key={i}>{part}</Text>
+                  )}
+                </Text>
+              )
+            })()}
+          </View>
         </View>
       )}
     </Animated.View>
@@ -188,9 +216,19 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    flexDirection: 'row', gap: spacing.sm,
   },
-  defEmoji: { fontSize: 28, lineHeight: 34 },
-  definition: { flex: 1, fontSize: fontSize.md, color: colors.text, lineHeight: 20 },
-  defHint: { flex: 1, fontSize: fontSize.md, color: colors.textHint, fontStyle: 'italic' },
+  defTextBlock: { flex: 1, gap: 4 },
+  definition: { fontSize: fontSize.md, color: colors.text, lineHeight: 20 },
+  defHint: { fontSize: fontSize.md, color: colors.textHint, fontStyle: 'italic' },
+  exampleText: {
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  highlightedWord: {
+    color: colors.primary,
+    fontWeight: '700',
+    fontFamily: 'Georgia',
+  },
 })

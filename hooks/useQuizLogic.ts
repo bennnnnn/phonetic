@@ -4,8 +4,8 @@ import { soundEngine } from '@/lib/sounds'
 import type { Word } from '@/lib/types'
 
 export const QUIZ_COUNT = 6
-export const CORRECT_DELAY = 1200
-export const WRONG_RESET_DELAY = 800
+export const CORRECT_DELAY = 900
+export const WRONG_RESET_DELAY = 1400
 
 export type OptionState = 'idle' | 'correct' | 'wrong'
 export type CardFeedback = 'neutral' | 'correct' | 'wrong'
@@ -17,11 +17,16 @@ export type Question = {
 }
 
 function shuffle<T>(arr: T[]): T[] {
-  return [...arr].sort(() => Math.random() - 0.5)
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 export function buildQuestions(words: Word[]): Question[] {
-  const pool = shuffle(words).slice(0, Math.min(QUIZ_COUNT, words.length))
+  const pool = shuffle(words)
   return pool.map((word) => {
     const distractors = shuffle(words.filter((w) => w.id !== word.id)).slice(0, 3)
     const options = shuffle([word, ...distractors])
@@ -80,7 +85,7 @@ export function useQuizLogic(words: Word[], onComplete?: (score: number, total: 
     if (correct) {
       haptics.success()
       soundEngine.play('correct')
-      const newScore = score + 1
+      const newScore = scoreRef.current + 1
       setScore(newScore)
       const isLast = currentQ >= questions.length - 1
       if (isLast) {

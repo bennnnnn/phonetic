@@ -7,6 +7,15 @@ import Animated, {
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
+/** Convert '#RRGGBB' + hex alpha (0x00-0xFF) to 'rgba(r, g, b, a)'. */
+function hexToRgba(hex: string, alphaHex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const a = parseInt(alphaHex, 16) / 255
+  return `rgba(${r}, ${g}, ${b}, ${a.toFixed(3)})`
+}
+
 export type ChapterData = {
   id: string; name: string; subtitle: string; wordCount: number
   accentColor: string; completed: number; total: number
@@ -38,7 +47,7 @@ export default function ChapterHeader({ item, expanded, onPress }: Props) {
       activeOpacity={0.8}
     >
       <View style={[styles.card, item.comingSoon && styles.cardSoon]}>
-        <View style={[styles.icon, { backgroundColor: item.accentColor + '18' }]}>
+        <View style={[styles.icon, { backgroundColor: hexToRgba(item.accentColor, '18') }]}>
           <Text style={styles.iconCount}>{item.wordCount}</Text>
         </View>
         <View style={styles.body}>

@@ -2,10 +2,15 @@ import { useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as Speech from 'expo-speech'
+import Animated, {
+  useSharedValue, useAnimatedStyle,
+  withSpring, withTiming, withRepeat, withSequence,
+} from 'react-native-reanimated'
 import { useAudio } from '@/hooks/useAudio'
 import { haptics } from '@/lib/haptics'
 import { pickRoundStartPhrase } from '@/lib/quizVoices'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
+import WaveformBars from '@/components/ui/WaveformBars'
 import type { Word } from '@/lib/types'
 
 type Props = {
@@ -16,23 +21,50 @@ type Props = {
 }
 
 export default function AudioQuizCard({ word, questionKey, cardFeedback }: Props) {
-  const { play: playTts } = useAudio()
+  const { play: playTts, playing } = useAudio()
+  const speakerScale = useSharedValue(1)
+
+  const startPulse = () => {
+    speakerScale.value = withRepeat(
+      withSequence(
+        withTiming(1.15, { duration: 400 }),
+        withTiming(1, { duration: 400 }),
+      ),
+      -1, true,
+    )
+  }
+
+  const stopPulse = () => {
+    speakerScale.value = withSpring(1, { damping: 10 })
+  }
 
   // Auto-speak the word whenever a new question appears
   useEffect(() => {
     const timer = setTimeout(() => {
       Speech.stop()
+      startPulse()
       playTts('', word.text)
       haptics.tap()
+      // Stop pulsing after estimated audio duration
+      setTimeout(stopPulse, 2500)
     }, 400)
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      stopPulse()
+    }
   }, [questionKey])
 
   const handleListenAgain = () => {
     Speech.stop()
+    startPulse()
     playTts('', word.text)
     haptics.tap()
+    setTimeout(stopPulse, 2500)
   }
+
+  const speakerStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: speakerScale.value }],
+  }))
 
   return (
     <View
@@ -49,7 +81,13 @@ export default function AudioQuizCard({ word, questionKey, cardFeedback }: Props
           accessibilityRole="button"
           accessibilityLabel="Listen to the word again"
         >
-          <Ionicons name="volume-high" size={44} color="#fff" />
+            <Animated.View style={[styles.playBtnInner, speakerStyle]}>
+            {playing ? (
+              <WaveformBars playing={true} />
+            ) : (
+              <Ionicons name="volume-high" size={44} color="#fff" />
+            )}
+            </Animated.View>
         </TouchableOpacity>
 
         <Text style={styles.hint}>
@@ -90,6 +128,13 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 44,
     backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playBtnInner: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },

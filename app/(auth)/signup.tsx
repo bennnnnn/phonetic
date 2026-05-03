@@ -1,617 +1,206 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-  LayoutAnimation,
-  UIManager,
-} from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { Ionicons } from '@expo/vector-icons'
+import { useEffect } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { router } from 'expo-router'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withDelay,
-  runOnJS,
+  useSharedValue, useAnimatedStyle,
+  withSpring, withTiming, withDelay, withSequence,
 } from 'react-native-reanimated'
-import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/store/authStore'
-import { useOnboardingStore } from '@/store/onboardingStore'
-import { pushNotification } from '@/lib/notifications'
-import { friendlyEmailAuthMessage } from '@/lib/authErrors'
 import { haptics } from '@/lib/haptics'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
-// Enable LayoutAnimation on Android
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
+const PERKS = [
+  { emoji: '🧠', text: 'Crack the code behind English spelling' },
+  { emoji: '🎯', text: 'Personalised lessons, your pace' },
+  { emoji: '🔥', text: 'Build a streak, track your progress' },
+]
+
+function PerkRow({ emoji, text, delay }: { emoji: string; text: string; delay: number }) {
+  const op = useSharedValue(0)
+  const x  = useSharedValue(-16)
+  useEffect(() => {
+    op.value = withDelay(delay, withTiming(1,  { duration: 280 }))
+    x.value  = withDelay(delay, withSpring(0,  { damping: 18, stiffness: 180 }))
+  }, [])
+  const style = useAnimatedStyle(() => ({ opacity: op.value, transform: [{ translateX: x.value }] }))
+  return (
+    <Animated.View style={[styles.perkRow, style]}>
+      <Text style={styles.perkEmoji}>{emoji}</Text>
+      <Text style={styles.perkText}>{text}</Text>
+    </Animated.View>
+  )
 }
 
 export default function SignupScreen() {
-  const { setSession } = useAuthStore()
-  const { displayName, dailyGoal } = useOnboardingStore()
-  const { ref: referralRef } = useLocalSearchParams<{ ref?: string }>()
+  const insets = useSafeAreaInsets()
 
-  const [emailExpanded, setEmailExpanded] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const emailRef = useRef<TextInput>(null)
-  const passwordRef = useRef<TextInput>(null)
-
-  // ── Entrance animations ──────────────────────────────────────────────
-  const heroY = useSharedValue(-30)
-  const heroOp = useSharedValue(0)
-
-  const contentY = useSharedValue(30)
-  const contentOp = useSharedValue(0)
-
-  const googleY = useSharedValue(20)
-  const googleOp = useSharedValue(0)
-
-  const emailBtnY = useSharedValue(20)
-  const emailBtnOp = useSharedValue(0)
-
-  const bottomOp = useSharedValue(0)
+  const logoScale = useSharedValue(0.7)
+  const logoOp    = useSharedValue(0)
+  const sheetY    = useSharedValue(80)
+  const sheetOp   = useSharedValue(0)
 
   useEffect(() => {
-    // Hero drops in
-    heroY.value = withSpring(0, { damping: 14, stiffness: 100 })
-    heroOp.value = withTiming(1, { duration: 300 })
-
-    // Content slides up
-    contentY.value = withDelay(150, withSpring(0, { damping: 16, stiffness: 120 }))
-    contentOp.value = withDelay(150, withTiming(1, { duration: 300 }))
-
-    // Buttons stagger in
-    googleY.value = withDelay(300, withSpring(0, { damping: 14, stiffness: 130 }))
-    googleOp.value = withDelay(300, withTiming(1, { duration: 250 }))
-
-    emailBtnY.value = withDelay(380, withSpring(0, { damping: 14, stiffness: 130 }))
-    emailBtnOp.value = withDelay(380, withTiming(1, { duration: 250 }))
-
-    // Bottom links fade in last
-    bottomOp.value = withDelay(500, withTiming(1, { duration: 300 }))
+    logoScale.value = withSpring(1,  { damping: 12, stiffness: 160 })
+    logoOp.value    = withTiming(1,  { duration: 320 })
+    sheetY.value    = withDelay(220, withSpring(0, { damping: 20, stiffness: 140 }))
+    sheetOp.value   = withDelay(220, withTiming(1, { duration: 300 }))
   }, [])
 
-  const heroStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: heroY.value }],
-    opacity: heroOp.value,
-  }))
-
-  const contentStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: contentY.value }],
-    opacity: contentOp.value,
-  }))
-
-  const googleStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: googleY.value }],
-    opacity: googleOp.value,
-  }))
-
-  const emailBtnStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: emailBtnY.value }],
-    opacity: emailBtnOp.value,
-  }))
-
-  const bottomStyle = useAnimatedStyle(() => ({
-    opacity: bottomOp.value,
-  }))
-
-  // ── Email expansion ──────────────────────────────────────────────────
-  const handleEmailExpand = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setEmailExpanded(true)
-    haptics.tap()
-    setTimeout(() => emailRef.current?.focus(), 350)
-  }
-
-  const handleGoogle = () => {
-    haptics.tap()
-    // Google OAuth will be wired in a future update
-  }
-
-  // ── Signup ───────────────────────────────────────────────────────────
-  const handleSignup = async () => {
-    KeyboardAvoidingView
-    const trimmedEmail = email.trim()
-    const trimmedPassword = password
-
-    if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
-      setError('Please enter a valid email address.')
-      return
-    }
-    if (trimmedPassword.length < 6) {
-      setError('Password must be at least 6 characters.')
-      return
-    }
-
-    setError(null)
-    setLoading(true)
-
-    try {
-      const { data, error: signupErr } = await supabase.auth.signUp({
-        email: trimmedEmail,
-        password: trimmedPassword,
-        options: {
-          data: { display_name: displayName.trim() || 'Learner' },
-        },
-      })
-
-      if (signupErr) throw signupErr
-      if (!data.user) throw new Error('Signup failed')
-
-      // Create user profile with onboarding data
-      await supabase.from('user_profiles').upsert(
-        {
-          id: data.user.id,
-          display_name: displayName.trim() || 'Learner',
-          daily_goal: dailyGoal,
-        },
-        { onConflict: 'id' }
-      )
-
-      // If user arrived via an invite link, create the friendship
-      if (referralRef) {
-        try {
-          const { data: referrer } = await supabase
-            .from('user_profiles')
-            .select('id')
-            .eq('referral_code', referralRef)
-            .maybeSingle()
-          if (referrer) {
-            await supabase.from('friendships').upsert(
-              {
-                referrer_id: referrer.id,
-                referred_id: data.user.id,
-              },
-              { onConflict: 'referrer_id,referred_id' },
-            )
-
-            // Increment referrer's referral count and grant free months
-            const REFERRALS_PER_MONTH = 10
-            const { data: rewards } = await supabase
-              .from('referral_rewards')
-              .select('referral_count, free_months')
-              .eq('user_id', referrer.id)
-              .maybeSingle()
-
-            let newCount = 0
-            if (rewards) {
-              const r = rewards as { referral_count: number; free_months: number }
-              newCount = r.referral_count + 1
-              const newFreeMonths = Math.floor(newCount / REFERRALS_PER_MONTH)
-              await supabase.from('referral_rewards').update({
-                referral_count: newCount,
-                free_months: newFreeMonths,
-                updated_at: new Date().toISOString(),
-              }).eq('user_id', referrer.id)
-            } else {
-              const newFreeMonths = Math.floor(1 / REFERRALS_PER_MONTH)
-              await supabase.from('referral_rewards').insert({
-                user_id: referrer.id,
-                referral_count: 1,
-                free_months: newFreeMonths,
-              })
-            }
-
-            // Notify referrer that a friend joined
-            try {
-              const displayName = (data?.user?.user_metadata?.display_name as string) || 'Someone'
-              await pushNotification({
-                userId: referrer.id,
-                type: 'friend_joined',
-                title: `${displayName} joined PhonicsFlow!`,
-                body: 'They used your invite link — check your Friends tab.',
-                emoji: '🤝',
-                linkRoute: '/(tabs)/friends',
-              })
-              // Notify after 10 referrals milestone
-              if (newCount > 0 && newCount % 10 === 0) {
-                await pushNotification({
-                  userId: referrer.id,
-                  type: 'referral_milestone',
-                  title: `You've referred ${newCount} friends! 🎉`,
-                  body: `You earned 1 free month of Pro. Check your Profile.`,
-                  emoji: '🎉',
-                  linkRoute: '/(tabs)/profile',
-                })
-              }
-            } catch {}
-          }
-        } catch {
-          // Silent fail — referral is best-effort
-        }
-      }
-
-      if (data.session) {
-        setSession(data.session)
-        router.replace('/(tabs)/home')
-      }
-    } catch (err) {
-      setError(friendlyEmailAuthMessage(err, 'Signup failed. Please try again.'))
-    } finally {
-      setLoading(false)
-    }
-  }
+  const logoStyle  = useAnimatedStyle(() => ({ transform: [{ scale: logoScale.value }], opacity: logoOp.value }))
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: sheetY.value }], opacity: sheetOp.value }))
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      {/* ── Teal hero ──────────────────────────────────── */}
+      <View style={styles.hero}>
+        <Animated.View style={[styles.logoWrap, logoStyle]}>
+          <View style={styles.logoCard}>
+            <Text style={styles.logoText}>Pf</Text>
+          </View>
+          <Text style={styles.appName}>PhonicsFlow</Text>
+
+        </Animated.View>
+
+        {/* Value props */}
+        <View style={styles.perks}>
+          {PERKS.map((p, i) => (
+            <PerkRow key={p.emoji} emoji={p.emoji} text={p.text} delay={340 + i * 90} />
+          ))}
+        </View>
+      </View>
+
+      {/* ── Bottom sheet ──────────────────────────────── */}
+      <Animated.View style={[styles.sheet, sheetStyle, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xl) }]}>
+        <Text style={styles.headline}>Create your account</Text>
+
+        {/* Google — coming soon */}
+        <TouchableOpacity style={styles.googleBtn} disabled activeOpacity={1}>
+          <View style={styles.googleIcon}><Text style={styles.googleG}>G</Text></View>
+          <Text style={styles.googleLabel}>Continue with Google</Text>
+        </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={styles.divRow}>
+          <View style={styles.divLine} />
+          <Text style={styles.divLabel}>or</Text>
+          <View style={styles.divLine} />
+        </View>
+
+        {/* Email — primary CTA */}
+        <TouchableOpacity
+          style={styles.emailBtn}
+          onPress={() => {
+            haptics.tap()
+            router.push('/(auth)/signup-email')
+          }}
+          activeOpacity={0.86}
         >
-          {/* ── Teal hero ──────────────────────────────────────────── */}
-          <Animated.View style={[styles.hero, heroStyle]}>
-            <View style={styles.heroLogoCard}>
-              <Text style={styles.heroLogoText}>Pf</Text>
-            </View>
-            <Text style={styles.heroAppName}>PhonicsFlow</Text>
-            <Text style={styles.heroTagline}>free to start · no credit card</Text>
-          </Animated.View>
+          <Text style={styles.emailIcon}>✉️</Text>
+          <Text style={styles.emailBtnText}>Continue with email</Text>
+        </TouchableOpacity>
 
-          {/* ── Content area ────────────────────────────────────────── */}
-          <Animated.View style={[styles.content, contentStyle]}>
-            <Text style={styles.headline}>Create your account</Text>
-            <Text style={styles.sub}>Join in seconds.</Text>
+        {/* Sign in */}
+        <TouchableOpacity
+          onPress={() => router.replace('/(auth)/login')}
+          style={styles.signInRow}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.signInText}>
+            Already have an account?{'  '}
+            <Text style={styles.signInLink}>Sign in</Text>
+          </Text>
+        </TouchableOpacity>
 
-            {/* Error banner */}
-            {error ? (
-              <Animated.View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </Animated.View>
-            ) : null}
-
-            {/* Google button — PRIMARY (on top, more prominent) */}
-            {/* Google button — disabled/coming-soon state */}
-            <Animated.View style={googleStyle}>
-              <TouchableOpacity
-                style={[styles.googleBtn, { opacity: 0.5 }]}
-                disabled
-              >
-                <View style={styles.googleIcon}>
-                  <Text style={styles.googleG}>G</Text>
-                </View>
-                <Text style={[styles.googleLabel, { color: colors.textMuted }]}>Continue with Google — coming soon</Text>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Email button — SECONDARY, expands inline */}
-            <Animated.View style={emailBtnStyle}>
-              <TouchableOpacity
-                style={[
-                  styles.emailBtn,
-                  emailExpanded && styles.emailBtnExpanded,
-                ]}
-                onPress={emailExpanded ? undefined : handleEmailExpand}
-                activeOpacity={emailExpanded ? 1 : 0.85}
-              >
-                {emailExpanded ? (
-                  <View style={styles.emailForm}>
-                    {/* Email field */}
-                    <TextInput
-                      ref={emailRef}
-                      style={styles.input}
-                      value={email}
-                      onChangeText={(v) => { setEmail(v); setError(null) }}
-                      placeholder="you@example.com"
-                      placeholderTextColor={colors.textHint}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      returnKeyType="next"
-                      onSubmitEditing={() => passwordRef.current?.focus()}
-                    />
-
-                    {/* Password field */}
-                    <View style={styles.passwordWrap}>
-                      <TextInput
-                        ref={passwordRef}
-                        style={[styles.input, styles.passwordInput]}
-                        value={password}
-                        onChangeText={(v) => { setPassword(v); setError(null) }}
-                        placeholder="Password (min. 6 characters)"
-                        placeholderTextColor={colors.textHint}
-                        secureTextEntry={!showPassword}
-                        autoComplete="new-password"
-                        returnKeyType="done"
-                        onSubmitEditing={handleSignup}
-                      />
-                      <TouchableOpacity
-                        onPress={() => setShowPassword((v) => !v)}
-                        style={styles.showBtn}
-                        hitSlop={8}
-                      >
-                        <Ionicons
-                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                          size={20}
-                          color={colors.textMuted}
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Sign up button */}
-                    <TouchableOpacity
-                      style={[styles.primaryBtn, loading && styles.disabled]}
-                      onPress={handleSignup}
-                      disabled={loading}
-                      activeOpacity={0.85}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.primaryBtnText}>Create account</Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <Text style={styles.emailBtnLabel}>Continue with email</Text>
-                )}
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* Sign in link */}
-            <Animated.View style={bottomStyle}>
-              <TouchableOpacity
-                onPress={() => router.replace('/(auth)/login')}
-                style={styles.signInRow}
-              >
-                <Text style={styles.signInText}>
-                  already have an account?{' '}
-                  <Text style={styles.signInLink}>sign in</Text>
-                </Text>
-              </TouchableOpacity>
-
-              {/* Terms */}
-              <Text style={styles.terms}>
-                By signing up you agree to our{' '}
-                <Text
-                  style={styles.termsLink}
-                  onPress={() => router.push('/(auth)/terms')}
-                >
-                  Terms
-                </Text>{' '}
-                and{' '}
-                <Text
-                  style={styles.termsLink}
-                  onPress={() => router.push('/(auth)/privacy')}
-                >
-                  Privacy Policy
-                </Text>
-              </Text>
-            </Animated.View>
-          </Animated.View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Text style={styles.terms}>
+          By continuing you agree to our{' '}
+          <Text style={styles.termsLink}>Terms</Text>
+          {' '}and{' '}
+          <Text style={styles.termsLink}>Privacy Policy</Text>
+        </Text>
+      </Animated.View>
     </SafeAreaView>
   )
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.surface },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
+  safe: { flex: 1, backgroundColor: colors.primary },
 
-  // Hero
+  /* ── Hero ── */
   hero: {
-    backgroundColor: colors.primary,
-    height: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  heroLogoCard: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  heroLogoText: {
-    fontFamily: 'Georgia',
-    fontSize: 18,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-  heroAppName: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-  },
-  heroTagline: {
-    color: '#9FE1CB',
-    fontSize: fontSize.sm,
-  },
-
-  // Content
-  content: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.xl,
+  },
+  logoWrap:  { alignItems: 'center', gap: spacing.xs },
+  logoCard:  {
+    width: 68, height: 68, borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: spacing.xs,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 }, elevation: 6,
+  },
+  logoText:  { fontFamily: 'Georgia', fontSize: 26, fontWeight: '500', color: colors.primary },
+  appName:   { color: '#fff', fontSize: 24, fontWeight: '700', letterSpacing: -0.4 },
+
+  perks:     { gap: spacing.md, alignSelf: 'stretch' },
+  perkRow:   { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  perkEmoji: { fontSize: 22, width: 32, textAlign: 'center' },
+  perkText:  { fontSize: fontSize.md, color: 'rgba(255,255,255,0.88)', fontWeight: '500', flex: 1 },
+
+  /* ── Sheet ── */
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
     gap: spacing.md,
+    shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 24,
+    shadowOffset: { width: 0, height: -6 },
   },
   headline: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  sub: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-    marginTop: -spacing.sm,
+    fontSize: 22, fontWeight: '700', color: colors.text,
+    letterSpacing: -0.3, textAlign: 'center',
+    marginBottom: spacing.xs,
   },
 
-  // Error
-  errorBox: {
-    backgroundColor: colors.errorLight,
-    borderRadius: radius.md,
-    padding: spacing.md,
-  },
-  errorText: { color: colors.error, fontSize: fontSize.md },
-
-  // Google button — PRIMARY
+  /* Google */
   googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, backgroundColor: colors.surface,
+    borderWidth: 1.5, borderColor: colors.border,
+    borderRadius: 14, paddingVertical: 15,
+    opacity: 0.55,
   },
   googleIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: '#FEE9E0',
+    alignItems: 'center', justifyContent: 'center',
   },
-  googleG: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#D85A30',
-  },
-  googleLabel: {
-    fontSize: fontSize.lg,
-    fontWeight: '500',
-    color: colors.text,
-  },
+  googleG:    { fontSize: 13, fontWeight: '700', color: '#D85A30' },
+  googleLabel:{ fontSize: fontSize.lg, fontWeight: '500', color: colors.text },
+  /* Divider */
+  divRow:  { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  divLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  divLabel:{ fontSize: fontSize.sm, color: colors.textHint },
 
-  // Divider
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginVertical: 2,
-  },
-  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { fontSize: fontSize.sm, color: colors.textHint },
-
-  // Email button — SECONDARY, expands inline
+  /* Email */
   emailBtn: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 14,
-    paddingVertical: 15,
-    alignItems: 'center',
-  },
-  emailBtnExpanded: {
-    backgroundColor: colors.surface,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-  },
-  emailBtnLabel: {
-    color: colors.primary,
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-  },
-  emailForm: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    width: '100%',
-  },
-
-  // Inputs
-  input: {
-    borderWidth: 1.5,
-    borderColor: colors.borderLight,
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    fontSize: fontSize.lg,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-  passwordWrap: { position: 'relative' },
-  passwordInput: { paddingRight: 44 },
-  showBtn: {
-    position: 'absolute',
-    right: 14,
-    top: 14,
-  },
-
-  // Primary button (Create account)
-  primaryBtn: {
     backgroundColor: colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: spacing.xs,
+    borderRadius: 16, paddingVertical: 17,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: spacing.sm,
   },
-  primaryBtnText: {
-    color: '#fff',
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-  },
-  disabled: { opacity: 0.6 },
+  emailIcon:    { fontSize: 20 },
+  emailBtnText: { color: '#fff', fontSize: fontSize.xl, fontWeight: '700', letterSpacing: 0.2 },
 
-  // Sign in + terms
-  signInRow: {
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  signInText: {
-    fontSize: fontSize.md,
-    color: colors.textMuted,
-  },
-  signInLink: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  terms: {
-    textAlign: 'center',
-    color: colors.textHint,
-    fontSize: 10,
-    lineHeight: 16,
-    marginTop: spacing.xs,
-  },
-  termsLink: {
-    color: colors.textMuted,
-    textDecorationLine: 'underline',
-  },
+  /* Links */
+  signInRow:  { alignItems: 'center', paddingVertical: spacing.xs },
+  signInText: { fontSize: fontSize.md, color: colors.textMuted },
+  signInLink: { color: colors.primary, fontWeight: '700' },
+
+  terms:     { textAlign: 'center', color: colors.textHint, fontSize: fontSize.xs, lineHeight: 17 },
+  termsLink: { textDecorationLine: 'underline' },
 })

@@ -9,6 +9,7 @@ export type Word = {
   audio_url: string
   slow_audio_url: string
   pastText?: string
+  pastPart?: string
 }
 
 export type WordFamily = {

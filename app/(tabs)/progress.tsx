@@ -13,6 +13,8 @@ import { useGroupProgress } from '@/hooks/useGroupProgress'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
+import { PROVERB_NODES } from '@/data/proverbs'
+import { IDIOM_NODES } from '@/data/idioms'
 import { ROUTES } from '@/lib/routes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import { progressForLesson, familyProgressPct } from '@/lib/lessonProgress'
@@ -79,10 +81,11 @@ export default function ProgressScreen() {
   const insets = useSafeAreaInsets()
   const [period, setPeriod]       = useState<Period>('week')
   const [refreshing, setRefreshing] = useState(false)
-  const [progressOpen, setProgressOpen] = useState(true)
-  const [vocabOpen, setVocabOpen] = useState(true)
-  const [verbsOpen, setVerbsOpen] = useState(true)
-  const [homoOpen, setHomoOpen] = useState(true)
+  const [progressOpen, setProgressOpen] = useState(false)
+  const [vocabOpen, setVocabOpen] = useState(false)
+  const [verbsOpen, setVerbsOpen] = useState(false)
+  const [homoOpen, setHomoOpen] = useState(false)
+  const [proverbsOpen, setProverbsOpen] = useState(false)
 
   const { completedLessonIds, totalXP, progress, loading: progressLoading, error: progressError, refetch: refetchProgress } = useProgress()
   const { profile, error: profileError, refetch: refetchProfile } = useProfile()
@@ -223,7 +226,7 @@ export default function ProgressScreen() {
 
   const groupProgressItems = useMemo(
     () => {
-      const allNodes = [...GROUP_NODES, ...IRREGULAR_VERB_NODES, ...HOMOPHONE_NODES]
+      const allNodes = [...GROUP_NODES, ...IRREGULAR_VERB_NODES, ...HOMOPHONE_NODES, ...PROVERB_NODES, ...IDIOM_NODES]
       const startedSet = new Set(startedGroups)
       return allNodes
         .filter((node) => startedSet.has(node.id))
@@ -238,6 +241,7 @@ export default function ProgressScreen() {
   const vocabItems = useMemo(() => groupProgressItems.filter((g) => GROUP_NODES.some((n) => n.id === g.id)), [groupProgressItems])
   const verbsItems = useMemo(() => groupProgressItems.filter((g) => IRREGULAR_VERB_NODES.some((n) => n.id === g.id)), [groupProgressItems])
   const homoItems  = useMemo(() => groupProgressItems.filter((g) => HOMOPHONE_NODES.some((n) => n.id === g.id)), [groupProgressItems])
+  const proverbItems  = useMemo(() => groupProgressItems.filter((g) => PROVERB_NODES.some((n) => n.id === g.id)), [groupProgressItems])
 
   // ── Data plumbing ─────────────────────────────────────────────────────────
 
@@ -258,7 +262,7 @@ export default function ProgressScreen() {
   }, [refetchProgress, refetchProfile, refetchLessons, refetchGroups])
 
   const dataError       = progressError ?? profileError
-  const hasAnyProgress  = completedLessonIds.length > 0 || totalWordsMastered > 0 || completedGroups.length > 0 || groupProgressItems.length > 0
+  const hasAnyProgress  = completedLessonIds.length > 0 || totalWordsMastered > 0 || completedGroups.length > 0 || groupProgressItems.length > 0 || proverbItems.length > 0
   const periodLabel     = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
 
   return (
@@ -411,7 +415,7 @@ export default function ProgressScreen() {
               <TouchableOpacity
                 key={g.id}
                 style={[styles.itemRow, i < vocabItems.length - 1 && styles.itemRowBorder]}
-                onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                onPress={() => router.push(g.done ? ROUTES.GROUP_REVIEW(g.id) : ROUTES.GROUP_LESSON(g.id))}
                 activeOpacity={0.7}
               >
                 <Text style={styles.itemEmoji}>{g.emoji}</Text>
@@ -439,7 +443,7 @@ export default function ProgressScreen() {
               <TouchableOpacity
                 key={g.id}
                 style={[styles.itemRow, i < verbsItems.length - 1 && styles.itemRowBorder]}
-                onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                onPress={() => router.push(g.done ? ROUTES.GROUP_REVIEW(g.id) : ROUTES.GROUP_LESSON(g.id))}
                 activeOpacity={0.7}
               >
                 <Text style={styles.itemEmoji}>{g.emoji}</Text>
@@ -467,7 +471,7 @@ export default function ProgressScreen() {
               <TouchableOpacity
                 key={g.id}
                 style={[styles.itemRow, i < homoItems.length - 1 && styles.itemRowBorder]}
-                onPress={() => router.push(ROUTES.GROUP_LESSON(g.id))}
+                onPress={() => router.push(g.done ? ROUTES.GROUP_REVIEW(g.id) : ROUTES.GROUP_LESSON(g.id))}
                 activeOpacity={0.7}
               >
                 <Text style={styles.itemEmoji}>{g.emoji}</Text>
@@ -476,6 +480,34 @@ export default function ProgressScreen() {
                     <Text style={styles.itemName}>{g.name}</Text>
                     <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
                       {g.done ? '✓ done' : `${g.wordCount} words`}
+                    </Text>
+                  </View>
+                  <View style={styles.itemTrack}>
+                    <View style={[styles.itemFill, g.done && styles.itemFillDone, { width: g.done ? '100%' : '0%' }]} />
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
+              </TouchableOpacity>
+            ))}
+          </ProgressSection>
+        )}
+
+        {/* Proverbs — collapsible */}
+        {proverbItems.length > 0 && (
+          <ProgressSection title="Proverbs" emoji="💬" open={proverbsOpen} onToggle={() => setProverbsOpen((p) => !p)}>
+            {proverbItems.map((g, i) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.itemRow, i < proverbItems.length - 1 && styles.itemRowBorder]}
+                onPress={() => router.push(g.done ? ROUTES.GROUP_REVIEW(g.id) : ROUTES.GROUP_LESSON(g.id))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                <View style={styles.itemMeta}>
+                  <View style={styles.itemNameRow}>
+                    <Text style={styles.itemName}>{g.name}</Text>
+                    <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
+                      {g.done ? '✓ done' : `${g.wordCount} proverbs`}
                     </Text>
                   </View>
                   <View style={styles.itemTrack}>

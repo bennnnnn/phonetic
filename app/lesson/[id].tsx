@@ -123,7 +123,8 @@ export default function LessonScreen() {
           <LessonCompleteBanner
             mastered={wordsMastered.length}
             skipped={wordsSkipped.length}
-            onContinue={() => router.push(ROUTES.SENTENCES(id))}
+            onContinue={() => router.push(ROUTES.QUIZ(id))}
+            label="start quiz →"
           />
         ) : currentWord ? (
           <WordFocusCard key={currentIndex} word={currentWord} onMaster={handleMaster} onSkip={handleSkip}
@@ -145,5 +146,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.neutral },
   skeletonContainer: { flex: 1, padding: spacing.lg, gap: spacing.md },
 
-  content: { flex: 1, padding: spacing.lg, paddingTop: 60, paddingBottom: spacing.xxl, justifyContent: 'flex-start' },
+  content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.md, justifyContent: 'flex-start' },
 })

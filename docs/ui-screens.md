@@ -1,7 +1,8 @@
 # PhonicsFlow — Approved UI Screens
 
-All 13 screens reviewed and approved. Build exactly as described here.
-Do not deviate from these specs without explicit instruction.
+Core flows reviewed and approved. Build to match these specs and the **visual reference** captured in product screenshots (auth, home path + category layouts, group lesson/review/complete, progress, friends, profile).
+
+Do not deviate without explicit instruction.
 
 ---
 
@@ -77,35 +78,57 @@ Do not deviate from these specs without explicit instruction.
 
 ## Screen 6 — Sign Up
 
-- Top teal hero (160px): logo + app name + "free to start · no credit card"
+- Top teal hero (~160px): logo (white rounded square, "Pf" in Georgia/teal) + **PhonicsFlow** in white + tagline **"free to start · no credit card"** in smaller white
 - White content area:
-  - Headline: "Create your account", sub: "Join in seconds."
-  - Google button: white, gray border, "G" circle in coral, "Continue with Google" — PRIMARY
-  - Email button: #E1F5EE background, teal text, "Continue with email" — SECONDARY
-    - Tapping email button expands inline — border becomes teal, email + password fields appear below, merged seamlessly
-    - NO confirm password field
-    - Password has show/hide toggle
-  - NO Apple button
-  - "already have an account? sign in" below buttons
-  - Terms fine print at bottom, 10px, very muted
+  - Headline: **Create your account** (bold black), sub: **Join in seconds.** (muted gray)
+  - **Google (when disabled / coming soon):** very light gray fill, gray border, muted "G" icon, label **Continue with Google — coming soon** — non-interactive or clearly disabled
+  - **Email (primary path):** #E1F5EE (mint) background, **Continue with email** in bold dark teal — main CTA when Google is not ready
+  - Separator row: thin lines with **or** centered in gray
+  - When Google is live: invert emphasis — Google white outlined primary, email mint secondary; still **no Apple** button
+  - Tapping **Continue with email** expands **inline** below: email + password fields, teal focus border on the expanded block — **no confirm password**; password field includes **show/hide** (eye) control
+  - Footer: **already have an account?** with **sign in** as teal tappable link
+  - Legal: small gray **By signing up you agree to our Terms and Privacy Policy** with Terms / Privacy Policy underlined links
+
+---
+
+## Sign In (auth stack, paired with Screen 6)
+
+- Same teal hero treatment: logo, **PhonicsFlow**, **welcome back** (smaller white)
+- White body:
+  - Title **Sign in**, subtitle **Good to see you again.**
+  - **Continue with Google** — white button, light border, colored "G" icon (when enabled)
+  - Divider: **or use email** centered between hairlines
+  - **Email** / **Password** — label above field, rounded bordered inputs; password with trailing **eye** toggle
+  - **forgot password?** — teal, right-aligned under password
+  - Primary **sign in** — full-width teal, white lowercase label, generous radius
+  - Footer: **Don't have an account?** + **sign up** (teal link)
+
+---
+
+## Auth entry / Welcome sheet (unauthenticated landing)
+
+- Upper half: full teal (#1D9E75), logo + **PhonicsFlow** + tagline **crack the english code** (or aligned splash copy)
+- Decorative **word chips** (two rows): e.g. bake, cake, light / snake, night, feat — frosted white rounded pills; **consonant in muted tone, pattern highlighted** (same decoding grammar as lessons)
+- Lower half: **white sheet** with large top corner radius overlapping hero
+  - Primary: **Continue with email** — solid teal, white text
+  - Secondary: **Continue with Google** — white, gray border, black text + G icon
+  - **Already have an account? Sign in** — Sign in in bold teal
+  - Terms line as on Screen 6
 
 ---
 
 ## Screen 7 — Home
 
-- Background: #F1EFE8
-- White header:
-  - "Good morning, [name]" — name in #1D9E75
-  - Avatar circle top right
-  - Streak pill + XP pill + words pill below greeting
-- Scrollable content:
-  - "continue learning" section:
-    - Big teal card (#1D9E75) with in-progress lesson
-    - Shows lesson name, current step, progress bar, play icon, "resume lesson" button (white)
-  - "word families" section:
-    - List of family cards — pattern badge (teal bg), title, word count, progress bar, level badge
-    - Locked families: grayed out, lock icon, "Complete level X to unlock"
-- Bottom tab bar: home (active), progress, profile — 3 tabs only
+- Page background: **#F1EFE8** (neutral) — reads as soft beige on device
+- **Header (in scroll or fixed):**
+  - Time-based greeting: **Good morning / Good afternoon / Good evening** on first line; **display name** large and bold on second line (or combined line per layout)
+  - **Stat chips** (horizontal): streak (**X DAYS** or flame + days), **WORDS** total, **XP** — compact caps/small type
+  - **NotificationBell** top-right: teal bell, **red numeric badge** when there are unread items
+- **Module / chapter card(s)** — white rounded card(s), one per learning track:
+  - **Collapsed row:** circular badge with **content count** (e.g. 482 phonics items), track title (**Phonics**, **Vocabulary**, **Irregular Verbs**, **Homophones**, **Proverbs**), **completed/total** on the right (e.g. 10/26) + chevron; **themed progress bar** under title (green phonics, blue/lavender vocab, purple verbs, orange/yellow homophones, red-orange proverbs)
+  - **Expanded (Phonics path):** same header row with **up** chevron; below, **vertical learning path**: large **teal circular lesson nodes** (pattern label e.g. ack, ake, an), **three gold stars** under each node, **completed** lessons show small **check badge** on the node; nodes linked by **dotted connector** path; horizontal **wave** offset for playful path layout
+- New users may see **NewUserGuide** overlay — do not block spec above
+- **Bottom tab bar:** **Home** (active = teal house + label), Progress, Friends, Profile — white bar, inactive gray icons/labels
 
 ---
 
@@ -126,6 +149,31 @@ Do not deviate from these specs without explicit instruction.
   - Horizontal scroll of word pills
   - States: current (teal), mastered (light teal + checkmark), skipped (strikethrough gray), upcoming (gray)
 - Audio speed removed from this screen — lives in profile settings
+
+### Group word lesson variant (`/group-lesson/[theme]`)
+
+- Header: back; **large oval** showing remaining count (e.g. **29**); right pill with **✓ mastered** and **skip** counts
+- Main card white, large radius:
+  - Emoji / visual above word (when defined)
+  - Hero word: **consonant gray, pattern teal** (Georgia for pattern/word display per global rules); optional **simplified spelling** hint beside word in small muted text (e.g. phonetic respelling)
+  - Circular **speaker** control (teal) aligned with word row
+  - **DEFINITION** / **EXAMPLE** as small **mint pills** (dark teal label text); body copy black/gray; example may be italic
+  - Optional **translation** row: small flag + translated text
+  - Row actions: **skip** (light gray pill, × + label) and **got it** (teal pill, check + label)
+- **Bottom answer strip** (when in quiz-style step): horizontal row of rounded options; **selected correct** = solid teal + white text; distractors light gray; one option may show light border + check when revealed
+
+---
+
+## Group review (`/group-review/[theme]`)
+
+- Background #F1EFE8; white header bar
+- Left: back chevron; center title **-{pattern} family** (e.g. **-ack family**); subtitle **N words · tap any row to expand** (muted)
+- Right: **done** pill — #E1F5EE background, teal check + **done** text
+- **Rule / tip card:** white, rounded, **thick vertical teal accent** on left; lightbulb icon + rule copy (e.g. short vowel + ck pattern)
+- **Scrollable word rows** (white cards):
+  - Word: **consonant(s) #B4B2A9**, **pattern #1D9E75**, large; second line: small gray phonetic / IPA
+  - Trailing **audio** circle (teal, white speaker) + **chevron** (expand)
+  - Expanded: divider, optional **mnemonic emoji/image**, definition text
 
 ---
 
@@ -154,6 +202,12 @@ Do not deviate from these specs without explicit instruction.
   - Wrong: button turns red, correct answer highlights green, advances after 1400ms
 - On completion: score shown inline in the card, "finish lesson" button appears
 
+### Group quiz (`/group-quiz/[theme]`)
+
+- Same interaction rules as lesson quiz (no manual next; correct/wrong timing and feedback)
+- Header shows **theme title** (emoji + pattern/group name), step bar, score strip; body uses shared **QuizOption** / **ScoreBar** components where applicable
+- After last question: navigates to **group complete** for that theme
+
 ---
 
 ## Screen 11 — Lesson Complete (ceremony)
@@ -169,42 +223,77 @@ Do not deviate from these specs without explicit instruction.
   - XP banner: "+X XP" counts up, level progress bar fills
   - Two buttons: "home" (quiet, #E1F5EE) + "next lesson →" (teal, dominant)
 
+### Group complete (`/group-complete/[theme]`)
+
+- Same **full teal takeover** + confetti energy as lesson complete
+- Badge: **GROUP COMPLETE** (uppercase, white pill on teal)
+- Headline: **You crushed it!** in white
+- Subline: **emoji + theme label** (e.g. **🚗 brake /**) — celebrates the group just finished
+- White rising card:
+  - Large **score ring** or percent (e.g. **100%**) in teal, pale mint inner fill
+  - **+X XP** in wide **peach / accent** pill (#FAECE7 family), dark coral text
+  - **Two stat tiles** side by side (light neutral): **Words mastered**, **Streak kept** (or parallel stats)
+  - Actions: **back to home** (quiet neutral pill, dark text) + **next group →** (solid teal, white text)
+
 ---
 
 ## Screen 12 — Progress
 
-- Background: #F1EFE8
-- White header: "your progress" + week/month/all toggle + streak/XP pills
-- Scrollable content:
-  - Streak card (teal): big streak number, "personal best" badge, 7-day week grid with checkmarks
-  - "this week" stat grid (2x2): words mastered, lessons done, XP, quiz accuracy
-  - Level card: progress bar from current XP to next level
-  - Word families list: pattern badge, name, progress bar, percentage
+- Safe area + background **#F1EFE8**
+- **Title row:** **your progress** (bold, lowercase-friendly), left; right **segmented pill**: **week** | **month** | **all** — selected segment **white fill + dark text**; unselected **muted gray** on pill track
+- **Streak card (full-width teal):** e.g. **5 day streak** in white; small pill **last 7 days** (semi-transparent); row of **7 day circles** (Sat→Fri labels): completed days = white ring + green check on mint fill; future/missed = soft mint; **today** label bold white
+- **Section label:** **Stats · this week** (or **Stats · this month** / **Stats · all time**) — small gray, reflects selected period
+- **2×2 stat grid** (white rounded cards):
+  - Words mastered — **large teal number**
+  - Lessons done — **large teal number**
+  - Points earned — **large black number** + **xp** suffix smaller
+  - Quiz accuracy — **large teal percent**
+- **Level progress card (white):** row **level progress** + pill **level N** (#E1F5EE bg, dark teal text); **horizontal progress bar** (teal fill, neutral track); footer row: **current XP** left, **X XP to level N+1** right (muted)
+- **Per-track progress (accordion):** white rounded sections — **emoji + title** (Phonics, Vocabulary, Irregular Verbs, Homophones, Proverbs) + chevron; expanded area lists **families / lessons** with bars or rows (implementation detail: must scroll)
+- Alternate compact state: single **Phonics** row with chevron when other sections collapsed — same visual language
+- Bottom tabs: Progress active (teal chart icon + label)
 
 ---
 
 ## Screen 13 — Profile / Settings
 
-- Teal header: avatar, name, goal subtitle, edit button, 4 mini stats (streak, XP, words, level)
-- Scrollable settings below (scroll MUST work — all sections visible on scroll):
-  - Pro upgrade card: dark (#2C2C2A), star icon, upgrade button
-  - Learning section: daily goal, reminder time, audio speed, accent — all with chevron + current value
-  - Accessibility section: dyslexia font (toggle OFF default), larger text (toggle OFF default)
-  - App section: sound effects (ON), haptic feedback (ON), notifications (ON) — all toggles
-  - Bottom card: restore purchases, sign out (red)
-- Every row has a colored icon (SVG, not emoji, not colored dot)
-- Bottom tab bar: home, progress, profile (active)
+- **Teal header (tall):** large **white avatar ring** with **teal initial**; **display name** bold white; subtitle **Goal tier · lessons** (e.g. **Casual · 1 lesson**) in smaller white; top-right **edit** pill (outline / translucent)
+- **Four stat pills** in a row on teal (semi-transparent darker teal tiles): **streak**, **XP**, **words**, **level** — big white number, small white caption
+- Scrollable body (scroll MUST work):
+  - **Unlock Pro** charcoal card (#2C2C2A): green **star** square icon; title **Unlock Pro**; body **Invite 10 friends for 1 free month, or tap upgrade**; right **upgrade** teal button
+  - **LEARNING** uppercase gray section header
+  - White grouped list: **Daily goal** (flag icon, value + chevron), **Reminder time** (bell, time, chevron), **Audio speed** (gauge icon, e.g. **0.75x**, chevron), **Accent** (globe/translate icon, flag + **American**, chevron) — each row colored square icon with white glyph
+  - **Accessibility:** dyslexia font, larger text — toggles default **OFF** unless product changes
+  - **App:** sound, haptics, notifications — toggles default **ON**
+  - **Account:** restore purchases, sign out (destructive red)
+- Iconography: **colored rounded squares** with white **Ionicons-style** glyphs (not emoji for settings rows)
+- Bottom tab: **Profile** active (teal person icon + label)
+
+---
+
+## Friends (`/(tabs)/friends`)
+
+- White top bar: title **Friends** (bold, left)
+- Main area background **#F1EFE8**
+- **Empty state (no friends yet):**
+  - Centered **🤝**
+  - Title: **Learning is better with friends**
+  - Body: **Share your invite code and when a friend signs up, you'll see their progress here.**
+  - Primary CTA: **Invite a friend** — full-width-ish green pill, **share-outline** icon + white label
+  - Hint below button (small gray): when a friend uses your invite link they appear automatically; progress compare
+- **Populated state:** scroll list of friend cards (avatar initials, name, streak + XP line, XP diff vs you)
+- Bottom tab: **Friends** active
 
 ---
 
 ## Global Rules (apply to every screen)
 
-- Brand teal: #1D9E75 (primary), #E1F5EE (light), #085041 (dark text on teal bg)
-- Font: system sans-serif (React Native default), Georgia serif for pattern displays only
+- Brand teal: #1D9E75 (primary), #E1F5EE (light), #085041 (dark text on teal bg); accents: #F0997B (coral), #EF9F27 (amber) where used in celebrations and XP chips
+- Font: system sans-serif (React Native default), **Georgia serif for pattern/word hero displays** in lessons and chips
 - Consonants always in #B4B2A9 (gray), patterns always in #1D9E75 (teal)
-- Border radius: 14px buttons, 16-20px cards, 24px focus cards, 50% avatars/circles
-- Tab bar: 3 tabs only — home, progress, profile
-- Active tab: teal indicator bar + teal dot + teal label
+- Border radius: 14px buttons, 16–20px cards, 24px focus cards, 50% avatars/circles; tab bar **white** surface, no heavy top border
+- **Primary tab bar (4 tabs, fixed order):** **Home**, **Progress**, **Friends**, **Profile**
+- Active tab: **teal icon + teal label**; inactive: **#888780** (textMuted) icon + label
 - All screens respect safe areas (notch top, home indicator bottom)
 - No confirm password fields anywhere
 - No Apple Sign In button (Google + email only)
@@ -212,7 +301,9 @@ Do not deviate from these specs without explicit instruction.
 
 ---
 
-## Screen 14 — Leaderboard
+## Screen 14 — Leaderboard (Leagues)
+
+> **Note:** Spec below is the approved **Leagues** experience. The **main app tab bar uses Friends** (Screen Friends above), not Leagues. Implement Leagues as a **stack/modal entry** from home/progress when wired, or retain spec for a future tab swap.
 
 - Background: #F1EFE8
 - White header:
@@ -242,9 +333,7 @@ Do not deviate from these specs without explicit instruction.
     - Divider lines above and below to visually separate from others
   - Scroll works — bottom entries fully reachable
 
-- Tab bar: 4 tabs — home, progress, leagues (active), profile
-  - Active: teal indicator bar + teal dot + teal label
-  - Inactive: gray bar, no dot, gray label
+- When shown inside app shell: tab active state follows **current route** (if Leagues is its own tab in a future build, use same teal active treatment as other tabs)
 
 ## Leagues System (backend logic)
 
@@ -254,4 +343,4 @@ Do not deviate from these specs without explicit instruction.
 - Top 3 of each league promote up one tier
 - Bottom 2 demote down one tier
 - XP earned during the week is the ranking metric (not total XP)
-- Friends tab shows only mutual followers — invite via share link
+- **Friends tab** (primary nav): lists users linked via **referral / invite** (`friendships`); invite flow uses share sheet + invite code (see Friends screen spec)

@@ -17,7 +17,7 @@ const { width: SW } = Dimensions.get('window')
 const AUTO_ADVANCE_MS = 2800
 
 function navigate() {
-  router.replace('/(auth)/onboarding')
+  router.replace('/(auth)/welcome')
 }
 
 export default function SplashScreen() {

@@ -28,6 +28,8 @@ import { NewUserGuide } from '@/components/home/NewUserGuide'
 import { NotificationBell } from '@/components/ui/NotificationBell'
 import { progressForLesson } from '@/lib/lessonProgress'
 import { GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
+import { PROVERB_NODES, PROVERB_GROUPS } from '@/data/proverbs'
+import { IDIOM_NODES, IDIOM_GROUPS } from '@/data/idioms'
 import { NODE_SIZE, NODE_STEP, WAVE, PALETTE, DOT_SIZE, buildDots } from '@/lib/pathLayout'
 import { GroupSection, useGroupSectionData } from '@/components/home/GroupSection'
 import type { ChapterData } from '@/components/home/ChapterHeader'
@@ -89,6 +91,8 @@ export default function HomeScreen() {
   const [vocabExpanded,   setVocabExpanded]   = useState(false)
   const [verbsExpanded,   setVerbsExpanded]   = useState(false)
   const [homoExpanded,    setHomoExpanded]    = useState(false)
+  const [proverbsExpanded, setProverbsExpanded] = useState(false)
+  const [idiomsExpanded, setIdiomsExpanded] = useState(false)
   const [showGuide,       setShowGuide]       = useState(true)
   const [focusTick,       setFocusTick]       = useState(0)
   const scrollRef     = useRef<ScrollView>(null)
@@ -173,6 +177,9 @@ export default function HomeScreen() {
 
   const homoSection = useGroupSectionData(HOMOPHONE_NODES, completedGroups, availableWidth)
 
+  // ── Proverbs data ──────────────────────────────────────────────────
+  const proverbSection = useGroupSectionData(PROVERB_NODES, completedGroups, availableWidth)
+
   // ══ Hero IDs for scroll targeting ══════════════════════════════════════════
 
   const heroGroupIdx = vocabSection.heroIdx
@@ -240,11 +247,33 @@ export default function HomeScreen() {
     comingSoon: false,
   }), [completedGroups])
 
+  const proverbChapter = useMemo<ChapterData>(() => ({
+    id: 'proverbs', name: 'Proverbs',
+    subtitle: '',
+    wordCount: PROVERB_NODES.reduce((s, g) => s + g.wordCount, 0),
+    accentColor: '#FF6B35',
+    completed: PROVERB_NODES.filter((g) => completedGroups.includes(g.id)).length,
+    total: PROVERB_NODES.length,
+    comingSoon: false,
+  }), [completedGroups])
+
+  const idiomSection = useGroupSectionData(IDIOM_NODES, completedGroups, availableWidth)
+
+  const idiomChapter = useMemo<ChapterData>(() => ({
+    id: 'idioms', name: 'Idioms',
+    subtitle: '',
+    wordCount: IDIOM_NODES.reduce((s, g) => s + g.wordCount, 0),
+    accentColor: '#E67E22',
+    completed: IDIOM_NODES.filter((g) => completedGroups.includes(g.id)).length,
+    total: IDIOM_NODES.length,
+    comingSoon: false,
+  }), [completedGroups])
+
   // ── Scroll to hero ────────────────────────────────────────────────────────
 
   const scrollToHero = useCallback((
-    section: 'phonics' | 'vocab' | 'verbs' | 'homo',
-    expandedStates: { phonics: boolean; vocab: boolean; verbs: boolean; homo: boolean },
+    section: 'phonics' | 'vocab' | 'verbs' | 'homo' | 'proverbs' | 'idioms',
+    expandedStates: { phonics: boolean; vocab: boolean; verbs: boolean; homo: boolean; proverbs: boolean; idioms: boolean },
     delay = 700,
   ) => {
     setTimeout(() => {
@@ -253,17 +282,21 @@ export default function HomeScreen() {
         vocab:   calcSectionHeight(GROUP_NODES.length),
         verbs:   calcSectionHeight(IRREGULAR_VERB_NODES.length),
         homo:    calcSectionHeight(HOMOPHONE_NODES.length),
+        proverbs: calcSectionHeight(PROVERB_NODES.length),
+        idioms:  calcSectionHeight(IDIOM_NODES.length),
       }
       const heroIndices: Record<string, number | null> = {
         phonics: heroLessonIdx,
         vocab:   vocabSection.heroIdx,
         verbs:   verbsSection.heroIdx,
         homo:    homoSection.heroIdx,
+        proverbs: proverbSection.heroIdx,
+        idioms:  idiomSection.heroIdx,
       }
 
       // Calculate Y offset: sum up heights of all sections before this one, plus hero position within section
       let y = CHAPTER_HEIGHT + SECTION_TOP_PAD
-      const sections: ('phonics' | 'vocab' | 'verbs' | 'homo')[] = ['phonics', 'vocab', 'verbs', 'homo']
+      const sections: ('phonics' | 'vocab' | 'verbs' | 'homo' | 'proverbs')[] = ['phonics', 'vocab', 'verbs', 'homo', 'proverbs']
       for (const s of sections) {
         if (s === section) {
           const heroIdx = heroIndices[s]
@@ -275,7 +308,7 @@ export default function HomeScreen() {
       }
       scrollRef.current?.scrollTo({ y: Math.max(0, y), animated: true })
     }, delay)
-  }, [heroLessonIdx, vocabSection.heroIdx, verbsSection.heroIdx, homoSection.heroIdx, phonicsSectionH])
+  }, [heroLessonIdx, vocabSection.heroIdx, verbsSection.heroIdx, homoSection.heroIdx, proverbSection.heroIdx, phonicsSectionH])
 
   const scrollToFirstLesson = useCallback(() => {
     const y = CHAPTER_HEIGHT + SECTION_TOP_PAD - 40
@@ -287,7 +320,7 @@ export default function HomeScreen() {
     if (heroLessonIdx === null && heroGroupIdx === null &&
         verbsSection.heroIdx === null && homoSection.heroIdx === null) return
     didInitScroll.current = true
-    const states = { phonics: true, vocab: true, verbs: true, homo: true }
+    const states = { phonics: true, vocab: true, verbs: true, homo: true, proverbs: true }
     if (heroLessonIdx !== null) scrollToHero('phonics', states, 600)
     else if (vocabSection.heroIdx !== null) scrollToHero('vocab', states, 600)
     else if (verbsSection.heroIdx !== null) scrollToHero('verbs', states, 600)
@@ -349,6 +382,11 @@ export default function HomeScreen() {
             if (!phonicsExpanded) {
               setPhonicsExpanded(true)
             }
+            // Scroll to show the phonics nodes after expanding
+            setTimeout(() => scrollToHero('phonics', {
+              phonics: true, vocab: false,
+              verbs: false, homo: false, proverbs: false,
+            }, 400), 500)
           }}
         />
       )}
@@ -415,7 +453,7 @@ export default function HomeScreen() {
                 setPhonicsExpanded(next)
                 if (next) scrollToHero('phonics', {
                   phonics: true, vocab: vocabExpanded,
-                  verbs: verbsExpanded, homo: homoExpanded,
+                  verbs: verbsExpanded, homo: homoExpanded, proverbs: proverbsExpanded,
                 })
               }}
             />
@@ -451,7 +489,7 @@ export default function HomeScreen() {
                   setVocabExpanded(next)
                   if (next) scrollToHero('vocab', {
                     phonics: phonicsExpanded, vocab: true,
-                    verbs: verbsExpanded, homo: homoExpanded,
+                    verbs: verbsExpanded, homo: homoExpanded, proverbs: proverbsExpanded,
                   })
                 },
                 showLockedAlert: true,
@@ -476,9 +514,10 @@ export default function HomeScreen() {
                   setVerbsExpanded(next)
                   if (next) scrollToHero('verbs', {
                     phonics: phonicsExpanded, vocab: vocabExpanded,
-                    verbs: true, homo: homoExpanded,
+                    verbs: true, homo: homoExpanded, proverbs: proverbsExpanded,
                   })
                 },
+                showLockedAlert: true,
               }}
               items={verbsSection.items}
               expanded={verbsExpanded}
@@ -500,12 +539,63 @@ export default function HomeScreen() {
                   setHomoExpanded(next)
                   if (next) scrollToHero('homo', {
                     phonics: phonicsExpanded, vocab: vocabExpanded,
-                    verbs: verbsExpanded, homo: true,
+                    verbs: verbsExpanded, homo: true, proverbs: proverbsExpanded,
                   })
                 },
+                showLockedAlert: true,
               }}
               items={homoSection.items}
               expanded={homoExpanded}
+              availableWidth={availableWidth}
+              onNavigate={(id, done) => router.push(done ? ROUTES.GROUP_REVIEW(id) : ROUTES.GROUP_LESSON(id))}
+            />
+
+            <View style={styles.sectionSpacer} />
+
+            <GroupSection
+              config={{
+                key: 'proverbs',
+                chapter: proverbChapter,
+                nodes: PROVERB_NODES,
+                completedGroups,
+                expanded: proverbsExpanded,
+                onToggle: () => {
+                  const next = !proverbsExpanded
+                  setProverbsExpanded(next)
+                  if (next) scrollToHero('proverbs', {
+                    phonics: phonicsExpanded, vocab: vocabExpanded,
+                    verbs: verbsExpanded, homo: homoExpanded, proverbs: true,
+                  })
+                },
+                showLockedAlert: true,
+              }}
+              items={proverbSection.items}
+              expanded={proverbsExpanded}
+              availableWidth={availableWidth}
+              onNavigate={(id, done) => router.push(done ? ROUTES.GROUP_REVIEW(id) : ROUTES.GROUP_LESSON(id))}
+            />
+
+            <View style={styles.sectionSpacer} />
+
+            <GroupSection
+              config={{
+                key: 'idioms',
+                chapter: idiomChapter,
+                nodes: IDIOM_NODES,
+                completedGroups,
+                expanded: idiomsExpanded,
+                onToggle: () => {
+                  const next = !idiomsExpanded
+                  setIdiomsExpanded(next)
+                  if (next) scrollToHero('idioms', {
+                    phonics: phonicsExpanded, vocab: vocabExpanded,
+                    verbs: verbsExpanded, homo: homoExpanded, proverbs: proverbsExpanded, idioms: true,
+                  })
+                },
+                showLockedAlert: true,
+              }}
+              items={idiomSection.items}
+              expanded={idiomsExpanded}
               availableWidth={availableWidth}
               onNavigate={(id, done) => router.push(done ? ROUTES.GROUP_REVIEW(id) : ROUTES.GROUP_LESSON(id))}
             />
@@ -524,18 +614,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
+    gap: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
-  greetingBlock: { gap: 1 },
+  greetingBlock: { gap: 1, flexShrink: 0 },
   greetingLine:  { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500' },
   displayName:   { fontSize: fontSize.xl, fontWeight: '700', color: colors.text },
   statsRow: {
-    flexDirection: 'row', gap: 6,
+    flexDirection: 'row', justifyContent: 'space-evenly', flex: 1,
+    maxWidth: 240,
   },
   statCard: {
     alignItems: 'center', gap: 1,
-    paddingVertical: 4, paddingHorizontal: 8,
-    minWidth: 48,
+    paddingVertical: 4, paddingHorizontal: 10,
+    minWidth: 52,
   },
   statIcon: { fontSize: 14, lineHeight: 18 },
   statValue: { fontSize: fontSize.sm, fontWeight: '700', color: colors.text },

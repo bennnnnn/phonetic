@@ -25,16 +25,8 @@ type Input = {
  * Returns the push token or null if registration fails.
  */
 export async function registerPushToken(): Promise<string | null> {
-  try {
-    const mod = await import('@/hooks/useNotifications')
-    // useNotifications is a hook; call tryRegisterPushToken via the hook's registerPush
-    // Since we're outside a component, call the underlying async fn directly
-    const { useNotifications } = mod
-    const hook = useNotifications()
-    return hook.registerPush()
-  } catch {
-    return null
-  }
+  const { tryRegisterPushToken } = await import('@/hooks/useNotifications')
+  return tryRegisterPushToken()
 }
 
 /**

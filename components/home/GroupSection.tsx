@@ -3,8 +3,7 @@ import { View, Alert, StyleSheet } from 'react-native'
 import ChapterHeader from '@/components/home/ChapterHeader'
 import CollapsibleSection from '@/components/home/CollapsibleSection'
 import GroupNode from '@/components/home/GroupNode'
-import { NODE_SIZE, NODE_STEP, WAVE } from '@/lib/pathLayout'
-import { spacing } from '@/lib/tokens'
+import { NODE_SIZE, NODE_STEP, WAVE, buildDots } from '@/lib/pathLayout'
 import { ROUTES } from '@/lib/routes'
 import type { ChapterData } from '@/components/home/ChapterHeader'
 
@@ -27,18 +26,7 @@ export type GroupSectionConfig = {
   showLockedAlert?: boolean
 }
 
-type Dot = { key: string; x: number; y: number; opacity: number }
-
-function buildDots(items: { index: number }[]): Dot[] {
-  return items.map((item) => ({
-    key: `${item.index}`,
-    x: Math.round((NODE_SIZE - 6) / 2 + 3),
-    y: SECTION_TOP_PAD + item.index * NODE_STEP + NODE_SIZE / 2 - 3,
-    opacity: 0.18,
-  }))
-}
-
-function calcSectionHeight(count: number): number {
+export function calcSectionHeight(count: number): number {
   return SECTION_TOP_PAD + count * NODE_STEP + 60
 }
 

@@ -7,6 +7,7 @@ import WordRow from '@/components/review/WordRow'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS } from '@/lib/practiceThemes'
 import ErrorState from '@/components/ui/ErrorState'
+import { PROVERB_GROUPS } from '@/data/proverbs'
 import type { Word } from '@/lib/types'
 
 export default function GroupReviewScreen() {
@@ -15,6 +16,7 @@ export default function GroupReviewScreen() {
   const { words, loading, error } = useGroupLesson(theme ?? '')
 
   const themeData = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme]
+  const isProverb = !!PROVERB_GROUPS[theme]
   const title = `${themeData?.emoji ?? '🗂'} ${theme}`
 
   if (loading) {
@@ -42,7 +44,7 @@ export default function GroupReviewScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{title}</Text>
-          <Text style={styles.headerSub}>{words.length} words · tap any row to expand</Text>
+          <Text style={styles.headerSub}>{words.length} {isProverb ? 'proverbs' : 'words'} · tap any row to expand</Text>
         </View>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>✓ done</Text>

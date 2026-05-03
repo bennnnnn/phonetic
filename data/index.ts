@@ -5,14 +5,19 @@
 import { WORD_THEMES, GROUP_NODES } from '@/data/vocabThemes'
 import { IRREGULAR_VERB_GROUPS, IRREGULAR_VERB_NODES } from '@/data/irregularVerbs'
 import { HOMOPHONE_GROUPS, HOMOPHONE_NODES } from '@/data/homophones'
+import { IDIOM_GROUPS, IDIOM_NODES } from '@/data/idioms'
 
 export { WORD_THEMES, GROUP_NODES }
 export { IRREGULAR_VERB_GROUPS, IRREGULAR_VERB_NODES }
 export { HOMOPHONE_GROUPS, HOMOPHONE_NODES }
+export { IDIOM_GROUPS, IDIOM_NODES }
 export { WORD_EMOJI } from '@/data/wordEmoji'
 export { SPEECH_LOCALES } from '@/data/speechLocales'
 export { LANGUAGES, languageByCode } from '@/data/languages'
 export type { Language } from '@/data/languages'
+export { WORD_EXAMPLES } from '@/data/examples'
+export { SILENT_LETTERS } from '@/data/silentLetters'
+export type { SilentLetter } from '@/data/silentLetters'
 
 /**
  * Get a display-friendly representation of a content group.

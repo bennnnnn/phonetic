@@ -6,17 +6,21 @@ type SettingsStore = {
   soundEnabled: boolean
   hapticsEnabled: boolean
   notificationsEnabled: boolean
-  audioSpeed: number  // 0.5 | 0.75 | 1.0 | 1.25 | 1.5
+  audioSpeed: 0.5 | 0.75 | 1.0 | 1.25 | 1.5
   accent: 'american' | 'british'
   dyslexiaFont: boolean
   largerText: boolean
+  dailyGoalMinutes: 5 | 10 | 15 | 25
+  nativeLanguage: string
   setSoundEnabled: (v: boolean) => void
   setHapticsEnabled: (v: boolean) => void
   setNotificationsEnabled: (v: boolean) => void
-  setAudioSpeed: (v: number) => void
+  setAudioSpeed: (v: 0.5 | 0.75 | 1.0 | 1.25 | 1.5) => void
   setAccent: (v: 'american' | 'british') => void
   setDyslexiaFont: (v: boolean) => void
   setLargerText: (v: boolean) => void
+  setDailyGoalMinutes: (v: 5 | 10 | 15 | 25) => void
+  setNativeLanguage: (v: string) => void
 }
 
 const LEGACY_SPEED: Record<string, number> = { slow: 0.75, normal: 1.0, fast: 1.25 }
@@ -31,6 +35,8 @@ export const useSettingsStore = create<SettingsStore>()(
       accent: 'american',
       dyslexiaFont: false,
       largerText: false,
+      dailyGoalMinutes: 10,
+      nativeLanguage: '',
       setSoundEnabled: (v) => set({ soundEnabled: v }),
       setHapticsEnabled: (v) => set({ hapticsEnabled: v }),
       setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
@@ -38,6 +44,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setAccent: (v) => set({ accent: v }),
       setDyslexiaFont: (v) => set({ dyslexiaFont: v }),
       setLargerText: (v) => set({ largerText: v }),
+      setDailyGoalMinutes: (v) => set({ dailyGoalMinutes: v }),
+      setNativeLanguage: (v) => set({ nativeLanguage: v }),
     }),
     {
       name: 'phonicsflow-settings',

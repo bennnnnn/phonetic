@@ -11,6 +11,7 @@ import { useLessonStore } from '@/store/lessonStore'
 import { useSaveProgress } from '@/hooks/useSaveProgress'
 import { useProfile } from '@/hooks/useProfile'
 import { useAuthStore } from '@/store/authStore'
+import { supabase } from '@/lib/supabase'
 import { pushNotification } from '@/lib/notifications'
 import ConfettiBurst from '@/components/celebrations/ConfettiBurst'
 import { Star } from '@/components/celebrations/CompleteShared'
@@ -76,7 +77,24 @@ export default function CompleteScreen() {
   }, [])
 
   const handleHome = () => { resetLesson(); router.replace(ROUTES.HOME) }
-  const handleNext = () => { resetLesson(); router.replace(ROUTES.HOME) }
+  const handleNext = async () => {
+    resetLesson()
+    if (!lesson) { router.replace(ROUTES.HOME); return }
+    // Find next lesson in the same word family
+    const { data: siblings } = await supabase
+      .from('lessons')
+      .select('id, title, level')
+      .eq('word_family_id', lesson.word_family_id)
+      .order('level', { ascending: true })
+    if (siblings && siblings.length > 0) {
+      const currentIdx = siblings.findIndex((l) => l.id === id)
+      if (currentIdx !== -1 && currentIdx < siblings.length - 1) {
+        router.replace(ROUTES.LESSON(siblings[currentIdx + 1]!.id))
+        return
+      }
+    }
+    router.replace(ROUTES.HOME)
+  }
 
   return (
     <SafeAreaView style={styles.safe}>

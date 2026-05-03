@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle,
   withSpring, withTiming, withDelay, withRepeat, withSequence,
+  cancelAnimation,
 } from 'react-native-reanimated'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, spacing } from '@/lib/tokens'
@@ -53,6 +54,9 @@ export default memo(function GroupNode({
         withSequence(withSpring(1.18, { damping: 8 }), withSpring(1, { damping: 8 })),
         -1, false,
       )
+    } else {
+      cancelAnimation(glowScale)
+      glowScale.value = 1
     }
   }, [isCurrent])
 

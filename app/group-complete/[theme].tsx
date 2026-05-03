@@ -14,6 +14,8 @@ import { supabase } from '@/lib/supabase'
 import { pushNotification } from '@/lib/notifications'
 import { updateStreak } from '@/lib/streak'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS, GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
+import { PROVERB_GROUPS } from '@/data/proverbs'
+import { IDIOM_GROUPS, IDIOM_NODES } from '@/data/idioms'
 import ConfettiBurst from '@/components/celebrations/ConfettiBurst'
 import { Star } from '@/components/celebrations/CompleteShared'
 import { haptics } from '@/lib/haptics'
@@ -30,10 +32,12 @@ export default function GroupCompleteScreen() {
 
   const { words } = useGroupLesson(theme ?? '')
 
-  const themeData    = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme]
+  const themeData    = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme] ?? IDIOM_GROUPS[theme]
+  const isProverb    = !!PROVERB_GROUPS[theme]
+  const isIdiom      = !!IDIOM_GROUPS[theme]
   const title        = `${themeData?.emoji ?? '🗂'} ${theme}`
   const streakDays   = profile?.streak_days ?? 0
-  const wordsMasteredCount = wordsMastered.length
+  const wordsMasteredCount = words.length || wordsMastered.length
 
   const xpEarned = Math.max(10, wordsMasteredCount * 4 + 25)
 
@@ -91,6 +95,10 @@ export default function GroupCompleteScreen() {
     if (vocabIdx !== -1 && vocabIdx < GROUP_NODES.length - 1) {
       router.replace(ROUTES.GROUP_LESSON(GROUP_NODES[vocabIdx + 1]!.id)); return
     }
+    const idiomIdx = IDIOM_NODES.findIndex((g) => g.id === theme)
+    if (idiomIdx !== -1 && idiomIdx < IDIOM_NODES.length - 1) {
+      router.replace(ROUTES.GROUP_LESSON(IDIOM_NODES[idiomIdx + 1]!.id)); return
+    }
     router.replace(ROUTES.HOME)
   }
 
@@ -125,7 +133,7 @@ export default function GroupCompleteScreen() {
         <View style={styles.statsGrid}>
           <View style={styles.stat}>
             <Text style={styles.statNum}>{wordsMasteredCount}</Text>
-            <Text style={styles.statLabel}>Words mastered</Text>
+            <Text style={styles.statLabel}>{isProverb ? 'Proverbs mastered' : 'Words mastered'}</Text>
           </View>
           <View style={styles.stat}>
             <Text style={styles.statNum}>{streakDays}</Text>

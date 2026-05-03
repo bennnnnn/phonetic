@@ -35,6 +35,15 @@ export default function GroupQuizScreen() {
 
   const attemptCountRef = useRef(0)
 
+  // Auto-play proverb audio when a new proverb question appears
+  useEffect(() => {
+    if (question?.word.id.startsWith('proverb:')) {
+      setTimeout(() => {
+        playTts(question.word.audio_url, question.word.text)
+      }, 500)
+    }
+  }, [currentQ, question?.word.id])
+
   useEffect(() => {
     if (!answered || !selectedId || !question) return
 
@@ -106,17 +115,64 @@ export default function GroupQuizScreen() {
           />
         ) : question ? (
           <>
-            <AudioQuizCard
-              word={question.word}
-              questionKey={currentQ}
-              cardFeedback={cardFeedback}
-            />
+            {question.word.id.startsWith('proverb:') ? (
+              // Proverbs: speaker-only prompt, options are definitions
+              <View style={styles.quizPromptWrap}>
+                <Text style={styles.quizPromptLabel}>Tap to hear the proverb</Text>
+                <TouchableOpacity
+                  style={styles.quizSpeakerBtn}
+                  onPress={async () => {
+                    await playTts(question.word.audio_url, question.word.text)
+                  }}
+                >
+                  <Ionicons name="volume-high" size={52} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : question.word.id.startsWith('homo:') ? (
+              // Homophones: show definition, pick the word
+              <View style={styles.quizPromptWrap}>
+                <Text style={styles.quizPromptLabel}>Which word matches this definition?</Text>
+                <View style={styles.homoDefCard}>
+                  <Text style={styles.homoDefText}>{question.word.definition}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.homoSpeakerMini}
+                  onPress={async () => {
+                    await playTts(question.word.audio_url, question.word.text)
+                  }}
+                >
+                  <Ionicons name="volume-high" size={22} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : question.word.id.startsWith('idiom:') ? (
+              // Idioms: show the idiom, pick the meaning
+              <View style={styles.quizPromptWrap}>
+                <Text style={styles.quizPromptLabel}>What does this idiom mean?</Text>
+                <View style={styles.homoDefCard}>
+                  <Text style={styles.homoDefText}>{question.word.text}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.homoSpeakerMini}
+                  onPress={async () => {
+                    await playTts(question.word.audio_url, question.word.text)
+                  }}
+                >
+                  <Ionicons name="volume-high" size={22} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <AudioQuizCard
+                word={question.word}
+                questionKey={currentQ}
+                cardFeedback={cardFeedback}
+              />
+            )}
 
             <View style={styles.options}>
               {question.options.map((opt) => (
                 <QuizOption
                   key={opt.id}
-                  label={opt.pastText ?? opt.text}
+                  label={question.word.id.startsWith('proverb:') || question.word.id.startsWith('idiom:') ? opt.definition : (opt.pastText ?? opt.text)}
                   state={getOptionState(opt.id, question.correctId, answered, selectedId)}
                   onPress={() => wrappedHandleAnswer(opt.id)}
                   disabled={answered}
@@ -146,4 +202,44 @@ const styles = StyleSheet.create({
   scoreBarWrap: { paddingVertical: spacing.sm },
   content: { flex: 1, padding: spacing.lg, gap: spacing.lg },
   options: { gap: spacing.sm },
+  quizPromptWrap: {
+    backgroundColor: colors.surface, borderRadius: radius.xl,
+    padding: spacing.xxl, gap: spacing.md, alignItems: 'center',
+    justifyContent: 'center', minHeight: 180,
+  },
+  quizSpeakerBtn: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quizPromptLabel: {
+    fontSize: fontSize.sm, color: colors.textMuted,
+    textTransform: 'uppercase', letterSpacing: 1,
+  },
+  homoDefCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    width: '100%',
+  },
+  homoDefText: {
+    fontSize: fontSize.lg,
+    color: colors.primaryDark,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  homoSpeakerMini: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.border,
+  },
+  homoExample: {
+    fontSize: fontSize.md,
+    color: colors.primaryDark,
+    textAlign: 'center',
+    lineHeight: 20,
+    fontStyle: 'italic',
+    marginTop: spacing.sm,
+  },
 })

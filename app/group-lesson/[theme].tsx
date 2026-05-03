@@ -126,7 +126,8 @@ export default function GroupLessonScreen() {
           <LessonCompleteBanner
             mastered={wordsMastered.length}
             skipped={wordsSkipped.length}
-            onContinue={() => router.push(ROUTES.GROUP_SENTENCES(theme))}
+            label="start quiz →"
+            onContinue={() => router.push(ROUTES.GROUP_QUIZ(theme))}
           />
         ) : currentWord ? (
           <WordFocusCard key={currentIndex} word={currentWord} onMaster={handleMaster} onSkip={handleSkip}
@@ -135,7 +136,7 @@ export default function GroupLessonScreen() {
         ) : null}
       </View>
 
-      {!isComplete && sortedWords.length > 0 && (
+      {!isComplete && sortedWords.length > 0 && !sortedWords[0]?.id.startsWith('proverb:') && (
         <QueueStrip words={sortedWords} currentId={currentWord?.id ?? ''}
           masteredIds={wordsMastered} skippedIds={wordsSkipped} onWordPress={handleWordSelect} />
       )}
@@ -147,5 +148,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.neutral },
   skeletonContainer: { flex: 1, padding: spacing.lg, gap: spacing.md },
 
-  content: { flex: 1, padding: spacing.lg, paddingTop: 60, paddingBottom: spacing.xxl, justifyContent: 'flex-start' },
+  content: { flex: 1, padding: spacing.lg, paddingTop: spacing.xs, paddingBottom: spacing.md, justifyContent: 'flex-start' },
 })

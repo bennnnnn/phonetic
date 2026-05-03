@@ -24,6 +24,7 @@ export function useFriends() {
       const { data: rows, error: fErr } = await supabase
         .from('friendships')
         .select('referrer_id, referred_id, created_at')
+        .or(`referrer_id.eq.${user.id},referred_id.eq.${user.id}`)
 
       if (fErr) throw fErr
       if (!rows || rows.length === 0) { setFriends([]); return }

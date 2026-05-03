@@ -370,7 +370,7 @@ export const HOMOPHONE_GROUPS: Record<string, { words: HomophoneWord[]; emoji: s
 
 export const HOMOPHONE_NODES = Object.entries(HOMOPHONE_GROUPS).map(([id, g]) => ({
   id,
-  emoji: '',
+  emoji: g.emoji,
   name: id,
   desc: g.rule,
   wordCount: g.words.length,

@@ -28,24 +28,45 @@ function AnimatedTotal({ count }: { count: number }) {
   )
 }
 
-// ── AnimatedRemaining ──────────────────────────────────────────────────────────
+// ── RollingCounter ───────────────────────────────────────────────────────────
+// Pops with a vertical stretch when count changes
 
-function AnimatedRemaining({ remaining, total }: { remaining: number; total: number }) {
-  const scale = useSharedValue(1)
+function RollingCounter({ count, icon, color }: { count: number; icon: string; color: string }) {
+  const translateY = useSharedValue(0)
+  const prevCount = useSharedValue(count)
+  const digits = String(count)
+  const digitHeight = 16 // approximate height of the number text
 
   useEffect(() => {
-    scale.value = withSequence(
-      withSpring(1.3, { damping: 4, stiffness: 200 }),
-      withSpring(1, { damping: 10, stiffness: 200 }),
-    )
-  }, [remaining])
+    const diff = count - prevCount.value
+    if (diff > 0) {
+      // Rolling up: new number slides in from bottom, old slides out to top
+      translateY.value = withSequence(
+        withTiming(-digitHeight, { duration: 80 }),
+        withTiming(0, { duration: 120 }),
+      )
+    } else if (diff < 0) {
+      // Rolling down (shouldn't happen often)
+      translateY.value = withSequence(
+        withTiming(digitHeight, { duration: 80 }),
+        withTiming(0, { duration: 120 }),
+      )
+    }
+    prevCount.value = count
+  }, [count])
 
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }))
+  const textStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }))
 
   return (
-    <View style={styles.remainingWrap}>
-      <Animated.Text style={[styles.remainingNum, style]}>{remaining}</Animated.Text>
-      <Text style={styles.remainingTotal}> / {total}</Text>
+    <View style={styles.counterPill}>
+      <Text style={styles.counterIcon}>{icon}</Text>
+      <View style={styles.rollWrap}>
+        <Animated.Text style={[styles.counterNum, { color }, textStyle]}>
+          {count}
+        </Animated.Text>
+      </View>
     </View>
   )
 }
@@ -66,21 +87,18 @@ export default function LessonHeader({ title, total, mastered, skipped, onBack }
       <TouchableOpacity onPress={onBack} style={styles.backBtn} accessibilityLabel="Go back">
         <Ionicons name="chevron-back" size={24} color={colors.text} />
       </TouchableOpacity>
-      <View style={styles.titleBlock}>
-        <Text style={styles.titleText} numberOfLines={1}>{title}</Text>
-      </View>
       <View style={styles.metaRow}>
         <AnimatedTotal count={total} />
         <View style={styles.counterRow}>
-          <BounceCounter count={mastered} icon="✓" color={colors.primary} />
-          <BounceCounter count={skipped} icon="–" color={colors.textHint} />
+          <RollingCounter count={mastered} icon="✓" color={colors.primary} />
+          <RollingCounter count={skipped} icon="–" color={colors.textHint} />
         </View>
       </View>
     </View>
   )
 }
 
-// ── BounceCounter (kept for the complete banner) ───────────────────────────────
+// ── BounceCounter (used by LessonCompleteBanner) ───────────────────────────────
 
 export function BounceCounter({ count, icon, color }: { count: number; icon: string; color: string }) {
   const scale = useSharedValue(1)
@@ -98,6 +116,47 @@ export function BounceCounter({ count, icon, color }: { count: number; icon: str
     <Animated.View style={[styles.counterPill, style]}>
       <Text style={styles.counterIcon}>{icon}</Text>
       <Text style={[styles.counterNum, { color }]}>{count}</Text>
+    </Animated.View>
+  )
+}
+
+// ── RollingDigit ────────────────────────────────────────────────────────────────
+
+function RollingDigit({ value, color }: { value: number; color: string }) {
+  const translateY = useSharedValue(20)
+  const op = useSharedValue(0)
+
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 300 })
+    op.value = withTiming(1, { duration: 200 })
+  }, [])
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: op.value,
+  }))
+
+  return (
+    <View style={styles.rollDigitWrap}>
+      <Animated.Text style={[styles.rollDigit, { color }, style]}>
+        {value}
+      </Animated.Text>
+    </View>
+  )
+}
+
+// ── AnimatedStatCard ───────────────────────────────────────────────────────────
+
+function AnimatedStatCard({ label, count, color, bgColor, icon }: {
+  label: string; count: number; color: string; bgColor: string; icon: string
+}) {
+  const displayCount = count
+
+  return (
+    <Animated.View style={[styles.statCard, { backgroundColor: bgColor }]}>
+      <Text style={styles.statIcon}>{icon}</Text>
+      <RollingDigit value={displayCount} color={color} />
+      <Text style={[styles.statLabel, { color }]}>{label}</Text>
     </Animated.View>
   )
 }
@@ -125,7 +184,22 @@ export function LessonCompleteBanner({
   return (
     <Animated.View style={[styles.completeCard, style]}>
       <Text style={styles.completeTitle}>Word learning done! 🎉</Text>
-      <Text style={styles.completeSub}>{mastered} mastered · {skipped} skipped</Text>
+      <View style={styles.statRow}>
+        <AnimatedStatCard
+          label="mastered"
+          count={mastered}
+          color={colors.primary}
+          bgColor={colors.primaryLight}
+          icon="✓"
+        />
+        <AnimatedStatCard
+          label="skipped"
+          count={skipped}
+          color={colors.amber}
+          bgColor={colors.amberLight}
+          icon="–"
+        />
+      </View>
       <TouchableOpacity
         style={styles.continueBtn}
         onPress={onContinue}
@@ -146,18 +220,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     gap: spacing.sm,
     borderBottomWidth: 1, borderBottomColor: colors.border,
+    overflow: 'hidden',
   },
   backBtn: { padding: spacing.xs, marginRight: spacing.xs },
   titleBlock: { flex: 1, minWidth: 0 },
   titleText: { fontSize: fontSize.xl, fontWeight: '700', color: colors.text, fontFamily: 'Georgia' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  metaRow: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' },
   totalPill: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.full,
-    paddingVertical: 6, paddingHorizontal: 14,
+    paddingVertical: 6, paddingHorizontal: 16,
+    minWidth: 44, alignItems: 'center',
   },
   totalText: { fontSize: fontSize.lg, fontWeight: '800', color: colors.primary },
-  counterRow: { flexDirection: 'row', gap: spacing.sm },
+  counterRow: {
+    flexDirection: 'row', gap: spacing.md,
+  },
 
   remainingWrap: {
     flexDirection: 'row', alignItems: 'baseline',
@@ -183,6 +261,10 @@ const styles = StyleSheet.create({
   },
   counterIcon: { fontSize: 12, fontWeight: '800' },
   counterNum:  { fontSize: 13, fontWeight: '800' },
+  rollWrap: {
+    height: 16,
+    overflow: 'hidden',
+  },
 
   completeCard: {
     backgroundColor: colors.surface, borderRadius: radius.xxl,
@@ -190,6 +272,39 @@ const styles = StyleSheet.create({
   },
   completeTitle: { fontSize: fontSize.xxl, fontWeight: '700', color: colors.text, textAlign: 'center' },
   completeSub:   { fontSize: fontSize.md, color: colors.textMuted },
+  statRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    width: '100%',
+  },
+  statCard: {
+    flex: 1,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statIcon: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.text,
+    opacity: 0.3,
+  },
+  statLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  rollDigitWrap: {
+    height: 36,
+    overflow: 'hidden',
+  },
+  rollDigit: {
+    fontSize: 34,
+    fontWeight: '800',
+    fontFamily: 'Georgia',
+  },
   continueBtn: {
     backgroundColor: colors.primary, borderRadius: radius.md,
     paddingVertical: spacing.md, paddingHorizontal: spacing.xl,

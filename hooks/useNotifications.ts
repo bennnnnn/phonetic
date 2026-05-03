@@ -11,7 +11,7 @@ function parseTime(timeStr: string): { hour: number; minute: number } {
   return { hour, minute }
 }
 
-async function tryRegisterPushToken(): Promise<string | null> {
+export async function tryRegisterPushToken(): Promise<string | null> {
   try {
     const { default: Constants } = await import('expo-constants')
     const Notif = await import('expo-notifications')

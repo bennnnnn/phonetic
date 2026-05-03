@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS } from '@/lib/practiceThemes'
+import { PROVERB_GROUPS } from '@/data/proverbs'
+import { IDIOM_GROUPS } from '@/data/idioms'
 import { HOMOPHONE_DEFINITIONS } from '@/data/homophones'
 import { WORD_PRONUNCIATIONS } from '@/data/vocabThemes'
 import { VERB_PRONUNCIATIONS } from '@/data/irregularVerbs'
@@ -15,6 +17,26 @@ export function useGroupLesson(theme: string) {
     const themeData = WORD_THEMES[theme]
     const verbGroup = IRREGULAR_VERB_GROUPS[theme]
     const homoGroup = HOMOPHONE_GROUPS[theme]
+    const proverbData = PROVERB_GROUPS[theme]
+    const idiomData = IDIOM_GROUPS[theme]
+
+    // — Proverbs: build from local data
+    if (proverbData) {
+      const built: Word[] = proverbData.proverbs.map((p, i) => ({
+        id: `proverb:${theme}:${i}`,
+        text: p.text,
+        consonant: '',
+        pattern: '',
+        definition: p.meaning,
+        phoneme: '',
+        pronunciation: '',
+        audio_url: '',
+        slow_audio_url: '',
+      }))
+      setWords(built)
+      setLoading(false)
+      return
+    }
 
     // — Irregular verbs: build from local data
     if (verbGroup) {
@@ -23,12 +45,15 @@ export function useGroupLesson(theme: string) {
         text,
         consonant: '',
         pattern: text,
-        definition: verbGroup.past[i] ? `past: ${verbGroup.past[i] ?? ''}` : '',
+        definition: verbGroup.past[i] || verbGroup.pastPart[i]
+          ? `past: ${verbGroup.past[i] ?? ''} · past participle: ${verbGroup.pastPart[i] ?? ''}`
+          : '',
         phoneme: '',
         pronunciation: VERB_PRONUNCIATIONS[text.toLowerCase()] ?? text,
         audio_url: '',
         slow_audio_url: '',
         pastText: verbGroup.past[i] ?? '',
+        pastPart: verbGroup.pastPart[i] ?? '',
       }))
       setWords(built)
       setLoading(false)
@@ -52,6 +77,24 @@ export function useGroupLesson(theme: string) {
           slow_audio_url: '',
         }
       })
+      setWords(built)
+      setLoading(false)
+      return
+    }
+
+    // — Idioms: build from local data
+    if (idiomData) {
+      const built: Word[] = idiomData.idioms.map((i, idx) => ({
+        id: `idiom:${theme}:${idx}`,
+        text: i.text,
+        consonant: '',
+        pattern: i.text,
+        definition: i.meaning,
+        phoneme: '',
+        pronunciation: '',
+        audio_url: '',
+        slow_audio_url: '',
+      }))
       setWords(built)
       setLoading(false)
       return

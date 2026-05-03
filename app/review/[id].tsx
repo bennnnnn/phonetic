@@ -44,7 +44,7 @@ export default function ReviewScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>{familyTitle}</Text>
-          <Text style={styles.headerSub}>{words.length} words · tap any row to expand</Text>
+          <Text style={styles.headerSub}>{words.length} words</Text>
         </View>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>✓ done</Text>

@@ -12,27 +12,29 @@ const _EMOJI: Record<string, string> = {
 
   // ── Fruits ───────────────────────────────────────────────────────────────────
   apple:'🍎', banana:'🍌', orange:'🍊', grape:'🍇', lemon:'🍋',
-  melon:'🍈', cherry:'🍒', peach:'🍑', mango:'🥭',
-  berry:'🫐', pear:'🍐', plum:'🫐',
-  kiwi:'🥝', pineapple:'🍍', strawberry:'🍓',
-  coconut:'🥥', watermelon:'🍉', lime:'🍋',
+  cherry:'🍒', peach:'🍑', pear:'🍐', mango:'🥭',
+  kiwi:'🥝', melon:'🍈', strawberry:'🍓',
+  blueberry:'🫐', pineapple:'🍍',
+  coconut:'🥥', watermelon:'🍉',
+  avocado:'🥑', olive:'🫒',
+  lime:'🍋‍🟩',
 
   // ── Vegetables ───────────────────────────────────────────────────────────────
-  carrot:'🥕', celery:'🥬', lettuce:'🥬', tomato:'🍅', potato:'🥔', onion:'🧅',
-  bean:'🫘', pea:'🫛', corn:'🌽', spinach:'🥬', broccoli:'🥦', mushroom:'🍄',
-  cucumber:'🥒', pepper:'🫑', pumpkin:'🎃', garlic:'🧄', cabbage:'🥬',
-  eggplant:'🍆',
+  carrot:'🥕', tomato:'🍅', potato:'🥔', onion:'🧅',
+  pepper:'🫑', corn:'🌽', broccoli:'🥦',
+  cucumber:'🥒', eggplant:'🍆', garlic:'🧄',
+  bean:'🫘', pea:'🫛', pumpkin:'🎃',
+  mushroom:'🍄', ginger:'🫚', chestnut:'🌰',
+  peanut:'🥜', 'hot-pepper':'🌶️',
 
   // ── Kitchen ──────────────────────────────────────────────────────────────────
   spoon:'🥄', fork:'🍴', knife:'🔪', plate:'🍽️', bowl:'🥣', cup:'🥤',
-  pan:'🍳', pot:'🍲', oven:'🫕', stove:'🍳', sink:'🚰', fridge:'🧊',
-  microwave:'📟', toaster:'🍞', kettle:'🫖', spatula:'🥄', teapot:'🫖',
+  teapot:'🫖', pan:'🍳', pot:'🍲', fondue:'🫕',
+  jar:'🫙', honey:'🍯', ice:'🧊', chopsticks:'🥢',
 
   // ── Furniture ────────────────────────────────────────────────────────────────
-  table:'🪑', chair:'🪑', desk:'🪑', bed:'🛏️', sofa:'🛋️',
-  shelf:'📚', drawer:'🗄️', lamp:'💡', rug:'🟫',
-  curtain:'🪟', closet:'🚪', cabinet:'🗄️', bookshelf:'📚',
-  pillow:'🛌', blanket:'🧶', stool:'🪑', bench:'🪑',
+  bed:'🛏️', sofa:'🛋️', lamp:'💡', pillow:'🛌',
+  chair:'🪑',
 
   // ── Car Parts ────────────────────────────────────────────────────────────────
   wheel:'🛞', tire:'🛞', engine:'🔧', brake:'🛑',

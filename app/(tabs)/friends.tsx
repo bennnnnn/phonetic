@@ -1,7 +1,7 @@
 import { useCallback, memo } from 'react'
 import {
   ScrollView, View, Text, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl,
+  StyleSheet, ActivityIndicator, RefreshControl, Share, Platform,
 } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -58,6 +58,41 @@ const FriendCard = memo(function FriendCard({
   )
 })
 
+// ── Invite card (always shown at top) ────────────────────────────────────────
+
+function InviteCard({ onShare }: { onShare: () => void }) {
+  return (
+    <TouchableOpacity style={ic.card} onPress={onShare} activeOpacity={0.85}>
+      <View style={ic.left}>
+        <Text style={ic.emoji}>🔗</Text>
+      </View>
+      <View style={ic.mid}>
+        <Text style={ic.title}>Invite friends to PhonicsFlow</Text>
+        <Text style={ic.sub}>Share your personal invite link — they'll appear here when they join</Text>
+      </View>
+      <View style={ic.btn}>
+        <Ionicons name="share-outline" size={16} color="#fff" />
+        <Text style={ic.btnText}>Share</Text>
+      </View>
+    </TouchableOpacity>
+  )
+}
+const ic = StyleSheet.create({
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg, padding: spacing.md,
+    marginHorizontal: spacing.lg, marginTop: spacing.md,
+  },
+  left:    { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  emoji:   { fontSize: 22 },
+  mid:     { flex: 1, gap: 2 },
+  title:   { fontSize: fontSize.md, fontWeight: '700', color: '#fff' },
+  sub:     { fontSize: fontSize.xs, color: 'rgba(255,255,255,0.75)', lineHeight: 16 },
+  btn:     { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: radius.full, paddingVertical: 6, paddingHorizontal: 10 },
+  btnText: { fontSize: fontSize.sm, fontWeight: '700', color: '#fff' },
+})
+
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 function EmptyState({
@@ -108,13 +143,10 @@ export default function FriendsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Friends</Text>
-        {code && friends.length > 0 && (
-          <TouchableOpacity style={styles.headerCodeChip} onPress={onShare} activeOpacity={0.8}>
-            <Ionicons name="share-outline" size={14} color={colors.primary} />
-            <Text style={styles.headerCodeText}>Invite a friend</Text>
-          </TouchableOpacity>
-        )}
       </View>
+
+      {/* Invite card — always visible */}
+      {code && <InviteCard onShare={onShare} />}
 
       {loading ? (
         <View style={styles.loadingWrap}>
@@ -149,17 +181,6 @@ export default function FriendsScreen() {
             <FriendCard key={f.id} friend={f} myXp={myXp} />
           ))}
 
-          {/* Invite more friends nudge */}
-          <TouchableOpacity style={styles.inviteMore} onPress={onShare} activeOpacity={0.85}>
-            <View style={styles.inviteMoreIcon}>
-              <Ionicons name="person-add-outline" size={18} color={colors.primary} />
-            </View>
-            <View style={styles.inviteMoreText}>
-              <Text style={styles.inviteMoreTitle}>Invite another friend</Text>
-              <Text style={styles.inviteMoreSub}>Share your invite link</Text>
-            </View>
-            <Ionicons name="share-outline" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
         </ScrollView>
       )}
     </SafeAreaView>
@@ -177,12 +198,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
   title: { fontSize: fontSize.xl, fontWeight: '700', color: colors.text },
-  headerCodeChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: colors.primaryLight, borderRadius: radius.full,
-    paddingVertical: 5, paddingHorizontal: 10,
-  },
-  headerCodeText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '600' },
 
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   errorWrap:   { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.lg },
@@ -246,20 +261,4 @@ const styles = StyleSheet.create({
   friendDiffAhead:  { color: colors.error },
   friendDiffBehind: { color: colors.primary },
 
-  // Invite more row
-  inviteMore: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    padding: spacing.md, marginTop: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
-    borderStyle: 'dashed',
-  },
-  inviteMoreIcon: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  inviteMoreText: { flex: 1 },
-  inviteMoreTitle: { fontSize: fontSize.md, fontWeight: '600', color: colors.text },
-  inviteMoreSub:   { fontSize: fontSize.sm, color: colors.textMuted },
 })

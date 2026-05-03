@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Text, AppState } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { Stack, router, useSegments } from 'expo-router'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { useFonts } from 'expo-font'
@@ -67,18 +68,22 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loading) return
+    if (segments.length === 0) return   // navigator not mounted yet
     const inAuth = segments[0] === '(auth)'
     if (!session && !inAuth) router.replace('/(auth)/welcome')
     else if (session && inAuth) {
       const segs = segments as string[]
       if (segs[1] === 'reset-password') return
+      if (segs[1] === 'onboarding') return   // let onboarding flow finish
       router.replace('/(tabs)/home')
     }
   }, [session, loading, segments])
 
   return (
-    <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   )
 }

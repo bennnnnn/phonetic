@@ -25,17 +25,9 @@ export function useProfile(): UseProfileReturn {
       return
     }
 
-    // 1. Check cache first for instant render
-    const cached = await readCache<UserProfile>(CACHE_TYPES.USER_PROFILE, currentUser.id)
-    if (cached) {
-      setProfile(cached.data)
-      setLoading(false)
-      if (!cached.stale) return // fresh cache, skip network
-    }
-
-    // 2. Fetch from network
+    // Always fetch from network on explicit refetch
     try {
-      if (!cached) setLoading(true)
+      setLoading(true)
       setError(null)
       const { data, error: sbError } = await supabase
         .from('user_profiles')
@@ -45,13 +37,17 @@ export function useProfile(): UseProfileReturn {
       if (sbError) throw sbError
       const p = (data as UserProfile | null) ?? null
       setProfile(p)
-      // 3. Write to cache on success
+      // Write to cache on success
       if (p) {
         void writeCache(CACHE_TYPES.USER_PROFILE, currentUser.id, p)
       }
     } catch (err) {
       setError(supabaseErrorMessage(err))
       // Keep cached data if network fails
+      const cached = await readCache<UserProfile>(CACHE_TYPES.USER_PROFILE, currentUser.id)
+      if (cached) {
+        setProfile(cached.data)
+      }
     } finally {
       setLoading(false)
     }

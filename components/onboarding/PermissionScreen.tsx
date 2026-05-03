@@ -1,11 +1,11 @@
 import React, { useEffect, type ReactNode } from 'react'
 import {
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -25,6 +25,8 @@ type Props = {
   body: string
   ctaLabel: string
   dotsFilled: number
+  /** Dot count for the extended post-signup flow (default 6). */
+  dotsTotal?: number
   onEnable: () => void
   onSkip: () => void
   children?: ReactNode
@@ -32,7 +34,7 @@ type Props = {
 
 export default function PermissionScreen({
   icon, eyebrow, headline, body, ctaLabel,
-  dotsFilled, onEnable, onSkip, children,
+  dotsFilled, dotsTotal = 6, onEnable, onSkip, children,
 }: Props) {
   const iconY = useSharedValue(-30)
   const iconOp = useSharedValue(0)
@@ -88,7 +90,7 @@ export default function PermissionScreen({
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
       {/* Teal hero */}
       <View style={styles.hero}>
         <Animated.View style={[styles.iconRing, iconStyle]}>
@@ -107,7 +109,7 @@ export default function PermissionScreen({
         {children}
 
         <View style={styles.dotsRow}>
-          <OnboardingProgressDots filled={dotsFilled} />
+          <OnboardingProgressDots filled={dotsFilled} total={dotsTotal} variant="light" />
         </View>
 
         <Animated.View style={ctaStyle}>
