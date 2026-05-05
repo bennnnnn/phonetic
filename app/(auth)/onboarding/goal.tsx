@@ -29,7 +29,10 @@ export default function OnboardingGoal() {
       selected={selected}
       onSelect={setSelected}
       onContinue={handleContinue}
-      onBack={() => router.back()}
+      onBack={() => {
+        if (router.canGoBack()) router.back()
+        else router.replace('/(tabs)/home')
+      }}
     />
   )
 }

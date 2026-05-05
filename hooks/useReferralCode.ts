@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Share } from 'react-native'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
-import * as Linking from 'expo-linking'
 
 export function useReferralCode() {
   const [code, setCode] = useState<string | null>(null)
@@ -32,7 +31,7 @@ export function useReferralCode() {
 
   const share = useCallback(async (displayName: string) => {
     if (!code) return
-    const inviteLink = Linking.createURL('/signup', { queryParams: { ref: code } })
+    const inviteLink = `phonicsflow://signup?ref=${code}`
     try {
       await Share.share({
         message: `${displayName} has been learning English phonics with PhonicsFlow 📚\n\nDownload it using their invite link to learn together! 🙌\n\n👉 ${inviteLink}`,

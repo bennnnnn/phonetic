@@ -11,6 +11,8 @@ type Props = {
   masteredIds: string[]
   skippedIds: string[]
   onWordPress?: (wordId: string) => void
+  /** Override the label shown in each pill. Defaults to word.text. */
+  getLabel?: (word: Word) => string
 }
 
 function getStatus(word: Word, currentId: string, masteredIds: string[], skippedIds: string[]): WordStatus {
@@ -19,7 +21,7 @@ function getStatus(word: Word, currentId: string, masteredIds: string[], skipped
   return 'unseen'
 }
 
-export default function QueueStrip({ words, currentId, masteredIds, skippedIds, onWordPress }: Props) {
+export default function QueueStrip({ words, currentId, masteredIds, skippedIds, onWordPress, getLabel }: Props) {
   const scrollRef = useRef<ScrollView>(null)
 
   // Auto-scroll so the current word pill stays visible — only scrolls when
@@ -75,7 +77,7 @@ export default function QueueStrip({ words, currentId, masteredIds, skippedIds, 
                   status === 'skipped' && styles.pillTextSkipped,
                 ]}
               >
-                {word.text}
+                {getLabel ? getLabel(word) : word.text}
               </Text>
               {status === 'mastered' && (
                 <Ionicons name="checkmark" size={12} color={colors.primary} />

@@ -1,9 +1,9 @@
 /**
  * Email signup wizard — 3 steps that slide in/out like Duolingo.
  *
- * Step 0 · Email    ✉️  "What's your email address?"
- * Step 1 · Password 🔒  "Create a strong password"
- * Step 2 · Name     👋  "Last thing — what's your first name?"
+ * Step 0 · Name     👋  "Last thing — what's your first name?"
+ * Step 1 · Email    ✉️  "What's your email address?"
+ * Step 2 · Password 🔒  "Create a strong password"
  *
  * Features:
  *  – Horizontal slide transition between steps (forward = slide left, back = slide right)
@@ -12,7 +12,7 @@
  *  – Step 2: live avatar (colored circle with initial) appears as you type
  *  – Step 2: personalized greeting "Nice to meet you, {name}! 🎉" fades in
  */
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, forwardRef } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, ScrollView,
@@ -178,7 +178,8 @@ const gr = StyleSheet.create({
 
 // ─── Shared input ─────────────────────────────────────────────────────────────
 
-function StyledInput(props: React.ComponentProps<typeof TextInput> & { label?: string }) {
+const StyledInput = forwardRef<TextInput, React.ComponentProps<typeof TextInput> & { label?: string }>(
+  function StyledInput(props, ref) {
   const { label, ...rest } = props
   const focused = useSharedValue(0)
   const borderStyle = useAnimatedStyle(() => ({
@@ -190,6 +191,7 @@ function StyledInput(props: React.ComponentProps<typeof TextInput> & { label?: s
       {label ? <Text style={inp.label}>{label}</Text> : null}
       <Animated.View style={[inp.wrap, borderStyle]}>
         <TextInput
+          ref={ref}
           style={inp.field}
           placeholderTextColor={colors.textHint}
           onFocus={() => { focused.value = withTiming(1, { duration: 150 }) }}
@@ -199,7 +201,7 @@ function StyledInput(props: React.ComponentProps<typeof TextInput> & { label?: s
       </Animated.View>
     </View>
   )
-}
+})
 const inp = StyleSheet.create({
   label: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textMuted, marginBottom: spacing.xs, marginLeft: 2 },
   wrap:  { borderRadius: 14, backgroundColor: colors.surface, overflow: 'hidden' },

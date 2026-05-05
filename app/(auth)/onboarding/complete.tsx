@@ -136,6 +136,7 @@ export default function OnboardingComplete() {
 
   function handleStart() {
     haptics.celebrate()
+    useSettingsStore.getState().setOnboardingComplete()
     router.replace('/(tabs)/home')
   }
 

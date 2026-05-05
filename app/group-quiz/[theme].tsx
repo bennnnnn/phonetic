@@ -20,7 +20,8 @@ import Skeleton from '@/components/ui/Skeleton'
 import SegmentedStepBar from '@/components/ui/SegmentedStepBar'
 
 export default function GroupQuizScreen() {
-  const { theme } = useLocalSearchParams<{ theme: string }>()
+  const params = useLocalSearchParams<{ theme: string }>()
+  const theme = Array.isArray(params.theme) ? (params.theme[0] ?? '') : (params.theme ?? '')
   const { words, loading } = useGroupLesson(theme)
   const { setQuizResult } = useLessonStore()
   const { play: playTts } = useAudio()
@@ -144,10 +145,10 @@ export default function GroupQuizScreen() {
                   <Ionicons name="volume-high" size={22} color={colors.primary} />
                 </TouchableOpacity>
               </View>
-            ) : question.word.id.startsWith('idiom:') ? (
-              // Idioms: show the idiom, pick the meaning
+            ) : question.word.id.startsWith('idiom:') || question.word.id.startsWith('phrasal:') ? (
+              // Idioms & Phrasal Verbs: show the phrase, pick the meaning
               <View style={styles.quizPromptWrap}>
-                <Text style={styles.quizPromptLabel}>What does this idiom mean?</Text>
+                <Text style={styles.quizPromptLabel}>{question.word.id.startsWith('idiom:') ? 'What does this idiom mean?' : 'What does this phrasal verb mean?'}</Text>
                 <View style={styles.homoDefCard}>
                   <Text style={styles.homoDefText}>{question.word.text}</Text>
                 </View>
@@ -172,7 +173,7 @@ export default function GroupQuizScreen() {
               {question.options.map((opt) => (
                 <QuizOption
                   key={opt.id}
-                  label={question.word.id.startsWith('proverb:') || question.word.id.startsWith('idiom:') ? opt.definition : (opt.pastText ?? opt.text)}
+                  label={question.word.id.startsWith('proverb:') || question.word.id.startsWith('idiom:') || question.word.id.startsWith('phrasal:') ? opt.definition : (opt.pastText ?? opt.text)}
                   state={getOptionState(opt.id, question.correctId, answered, selectedId)}
                   onPress={() => wrappedHandleAnswer(opt.id)}
                   disabled={answered}

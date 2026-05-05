@@ -8,14 +8,18 @@ import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS } from '@/lib/practiceThemes'
 import ErrorState from '@/components/ui/ErrorState'
 import { PROVERB_GROUPS } from '@/data/proverbs'
+import { IDIOM_GROUPS } from '@/data/idioms'
+import { PHRASAL_VERB_GROUPS } from '@/data/phrasalVerbs'
+import { ROUTES } from '@/lib/routes'
 import type { Word } from '@/lib/types'
 
 export default function GroupReviewScreen() {
   const insets = useSafeAreaInsets()
   const { theme } = useLocalSearchParams<{ theme: string }>()
-  const { words, loading, error } = useGroupLesson(theme ?? '')
+  const { words, loading } = useGroupLesson(theme ?? '')
 
   const themeData = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme]
+    ?? PROVERB_GROUPS[theme] ?? IDIOM_GROUPS[theme] ?? PHRASAL_VERB_GROUPS[theme]
   const isProverb = !!PROVERB_GROUPS[theme]
   const title = `${themeData?.emoji ?? '🗂'} ${theme}`
 
@@ -27,10 +31,10 @@ export default function GroupReviewScreen() {
     )
   }
 
-  if (error || !words.length) {
+  if (!words.length) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <ErrorState message={error ?? 'Not found'} />
+        <ErrorState message="Not found" />
       </SafeAreaView>
     )
   }
@@ -58,6 +62,14 @@ export default function GroupReviewScreen() {
         {words.map((word, i) => (
           <WordRow key={word.id} word={word as Word} index={i} />
         ))}
+
+        <TouchableOpacity
+          style={styles.practiceBtn}
+          onPress={() => router.push(ROUTES.GROUP_LESSON(theme ?? ''))}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.practiceBtnText}>Practice again →</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   )
@@ -83,4 +95,10 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.primary },
 
   list: { padding: spacing.lg, gap: spacing.sm },
+
+  practiceBtn: {
+    backgroundColor: colors.primaryLight, borderRadius: radius.lg,
+    paddingVertical: 14, alignItems: 'center', marginTop: spacing.md,
+  },
+  practiceBtnText: { fontSize: fontSize.lg, fontWeight: '600', color: colors.primary },
 })

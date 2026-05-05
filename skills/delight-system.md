@@ -388,7 +388,7 @@ Get these sounds from:
 - **Freesound.org** — free, CC0 license, search "UI correct", "game ding", "coin collect"
 - **Zapsplat.com** — free tier, high quality UI sounds
 - **Pixabay sounds** — CC0, great for notification sounds
-- **ElevenLabs sound effects** — for custom branded sounds (paid)
+- **Custom / licensed SFX** — paid libraries or your own recordings for branded UI sounds
 - **Adobe Audition free pack** — professional UI sound kit
 
 File requirements:

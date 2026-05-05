@@ -127,21 +127,21 @@ Build these hooks:
 ## Task 5 — Audio Generation Script
 **Agent prompt:**
 ```
-Create /scripts/generate-audio.ts
+Create /scripts/generate-audio.ts (or align an existing script with this flow)
 
 This script:
-1. Fetches all words from Supabase where audio_url is empty
-2. For each word, calls ElevenLabs API (American voice, normal speed)
-3. Calls ElevenLabs again (same voice, speed 0.7) for slow version
-4. Uploads both audio files to Supabase storage bucket "audio-cache"
+1. Fetches all words from Supabase where audio_url or slow_audio_url is empty
+2. For each word, generates audio via Google Cloud Text-to-Speech (or another
+   server-side TTS provider) — normal speed for `audio_url`, slower for `slow_audio_url`
+3. Uploads both files to Supabase Storage (e.g. bucket "audio-cache")
    Path format: words/{word_id}/normal.mp3 and words/{word_id}/slow.mp3
-5. Updates the word record with the public URLs
+4. Updates the word row with the public URLs
 
-Use the ElevenLabs client pattern from /skills/add-tts-audio.md
-Handle rate limiting — add 500ms delay between API calls
+Follow /skills/add-tts-audio.md (batch generation, keys only in script env, never on device).
+Handle rate limiting — add ~500ms delay between API calls if needed.
 Log progress: "Generated audio for: bake (3/15)"
 
-Run with: ELEVENLABS_API_KEY=xxx npx ts-node scripts/generate-audio.ts
+Run with service credentials / API key in env (see CLAUDE.md Environment Variables).
 ```
 
 ---
@@ -166,20 +166,11 @@ No hardcoded colors or sizes.
    Props: message, onRetry
    Shows error message + retry button
 
-4. /components/ui/EmptyState.tsx
-   Props: message, subtitle (optional)
+4. Empty states: there is no shared `/components/ui/EmptyState.tsx` — use a small
+   inline layout (title + hint + CTA) or a screen-local component (see Friends tab).
 
-5. /components/lesson/PatternHeader.tsx
-   Props: pattern (e.g. "-ake"), sound (e.g. "/eɪk/"), rule (e.g. "CVCe...")
-   Shows large stylized pattern with colored suffix
-   Teal color for the pattern part
-
-6. /components/lesson/WordCard.tsx
-   Props: word (Word type), onPress, revealed (bool)
-   Shows word text with teal colored suffix matching the pattern
-   AudioButton on the right
-   Definition shown when revealed=true
-   Tap → scale bounce animation via Reanimated
+5. /components/lesson/LessonHeader.tsx, BannerBar.tsx, WordFocusCard.tsx, QueueStrip.tsx, AudioButton.tsx
+   Build to match /docs/ui-screens.md and existing patterns (consonant vs pattern colors, Georgia for pattern text).
 ```
 
 ---
@@ -187,31 +178,20 @@ No hardcoded colors or sizes.
 ## Task 7 — Lesson Screen
 **Agent prompt:**
 ```
-Follow /skills/create-screen.md.
+Follow /skills/create-screen.md and /docs/ui-screens.md.
 
-Build /app/lesson/[id].tsx
+The implemented lesson flow lives in /app/lesson/[id].tsx — word-at-a-time learning, not a 4-tab wizard.
 
-This is the core lesson screen with 4 steps (tab-style progress):
-  Step 1 — Decode: show PatternHeader, explain the rule, 3 example words with audio
-  Step 2 — Word Bank: grid of WordCards, each plays audio on tap, revealed on tap
-  Step 3 — Sentences: list of 5 practice sentences, -ake words highlighted in teal, tap word to hear it
-  Step 4 — Quiz: 6 multiple choice questions (definition → word), score tracked
+Core pieces:
+  - useLesson(id), useLessonStore for master/skip state
+  - LessonHeader, WordFocusCard, QueueStrip, LessonCompleteBanner (BannerBar)
+  - useAudio for word audio (URLs from DB + fallback TTS per /skills/add-tts-audio.md)
+  - ErrorState + Skeleton for loading/error
 
-Navigation between steps: Next button at bottom, previous via back arrow
-Progress bar at top showing current step (1-4)
+After the word queue, navigation continues to quiz/sentences per ROUTES in /lib/routes.ts
+(see app/quiz/[id].tsx, app/sentences/[id].tsx).
 
-Use:
-  useLesson(id) for data
-  useAudio() for playback
-  PatternHeader, WordCard, Button, Skeleton, ErrorState components
-
-On quiz completion:
-  Call useSaveProgress with the score
-  Show celebration (use Lottie from /assets/lottie/celebrate.json if it exists, else skip)
-  Show score summary with XP earned
-  Button: "Back to Home"
-
-Word cards stagger in with 80ms delay using Reanimated FadeInDown.
+When extending this screen, keep consonant/pattern colors and Georgia rules from CLAUDE.md.
 ```
 
 ---
@@ -221,7 +201,7 @@ Word cards stagger in with 80ms delay using Reanimated FadeInDown.
 ```
 Follow /skills/create-screen.md.
 
-Build /app/(tabs)/home/index.tsx
+Build /app/(tabs)/home.tsx
 
 Shows:
   - Greeting: "Good morning, [name]" (use time of day)
@@ -300,152 +280,27 @@ Report any broken steps as a list with the error message.
 
 ---
 
-## Task 11 — Leaderboard Screen
+## Task 11 — Friends (no leagues)
+
+**Product direction:** There are **no leagues** or weekly leaderboard tiers. Social comparison is **friends-only**: invite links, optional **contacts matching** during onboarding, and a **Friends** tab that lists linked users sorted by **total XP** with plain-language rank vs you.
 
 **Agent prompt:**
 ```
-Follow /skills/create-screen.md and /docs/ui-screens.md (Screen 14).
-Follow /skills/create-supabase-hook.md for all data hooks.
-Follow /skills/delight-system.md for interactions.
+Follow /docs/ui-screens.md — Friends (`/(tabs)/friends`).
+Follow /skills/create-screen.md and /skills/create-supabase-hook.md where relevant.
 
-Build the leaderboard feature — screen + backend + logic.
+### Data & privacy
+- friendships table (referrer_id, referred_id): created on referral signup and on contact match
+- find_users_by_emails RPC: server matches contact emails to existing accounts; client never displays raw emails from contacts
+- User profiles: display_name, streak_days, total_xp for each friend
 
----
+### App
+- /app/(tabs)/friends.tsx — invite card (share/referral), empty state, list with XP sort, rank among you+friends, XP ahead/behind copy
+- Onboarding contacts screen: request permission, call RPC, upsert friendships for matches
+- Tab bar: home | progress | friends | profile (Friends is the third tab)
 
-### 1. Database migration
-
-Create /supabase/migrations/004_leaderboard.sql
-
-Tables:
-  leagues
-    id, name (text), tier (1|2|3|4), created_at
-
-  league_members
-    id, league_id, user_id, weekly_xp (int, default 0), rank (int), movement (int), joined_at
-    RLS: users can read all members in their league, write only their own row
-
-  league_tiers
-    id, name ('Teal'|'Gold'|'Diamond'|'Master'), min_rank_to_promote (3), max_rank_to_demote (2)
-
-Indexes:
-  league_members.league_id
-  league_members.user_id
-  league_members.weekly_xp DESC (for ranking)
-
-Seed 4 league tiers:
-  1 = Teal, 2 = Gold, 3 = Diamond, 4 = Master
-
----
-
-### 2. Leaderboard hooks
-
-Build /hooks/useLeaderboard.ts
-  - Fetches current user's league_members row to get their league_id
-  - Fetches all members in that league ordered by weekly_xp DESC
-  - Returns: { members, userRank, userMember, loading, error }
-  - Members shape: { id, user_id, display_name, weekly_xp, rank, movement, streak_days }
-
-Build /hooks/useLeagueTier.ts
-  - Returns current user's league tier name (Teal/Gold/Diamond/Master)
-  - Returns days until weekly reset (next Sunday midnight)
-
----
-
-### 3. Leaderboard screen
-
-Build /app/(tabs)/leagues/index.tsx
-
-Layout (exactly as /docs/ui-screens.md Screen 14):
-  - White header:
-      - "leaderboard" title left
-      - League tier badge top right (e.g. "Teal League") — colored dot + name
-      - 3-tab toggle: "this week" | "all time" | "friends"
-      - "resets in X days · top 3 promote to [next tier] League" — muted 11px
-
-  - Podium (top 3 users):
-      - 3-column layout, order: 2nd | 1st | 3rd
-      - 1st place block: #1D9E75, 72px tall, 72px wide, crown above avatar
-      - 2nd place block: #5DCAA5, 56px tall, 60px wide
-      - 3rd place block: #9FE1CB, 44px tall, 60px wide
-      - Each: avatar (initials circle), name (truncated 10 chars), XP, rank number in block
-
-  - Scrollable list (ranks 4–10+):
-      - Each row: rank, avatar, name, streak, XP right-aligned, movement badge
-      - Movement badge: green "+N" (#E1F5EE bg) for climbing, red "-N" (#FCEBEB bg) for dropping
-      - User's own row:
-          - #E1F5EE background, 1.5px #1D9E75 border
-          - Teal avatar (#1D9E75 bg, white initial)
-          - "(you)" appended to name
-          - Divider lines above and below
-
-  - Loading state: skeleton rows for list, skeleton blocks for podium
-  - Empty state: "No league yet — complete your first lesson to join!"
-
----
-
-### 4. Weekly XP reset (Supabase Edge Function)
-
-Create /supabase/functions/weekly-reset/index.ts
-
-Logic (runs every Sunday at midnight UTC via cron):
-  1. For each league, rank members by weekly_xp DESC
-  2. Calculate movement = old_rank - new_rank (positive = climbed)
-  3. Update all league_members rows with new rank + movement
-  4. Promote top 3 in each league to next tier (create new league_members row in higher league)
-  5. Demote bottom 2 to previous tier (if tier > 1)
-  6. Reset all weekly_xp to 0
-  7. Log: "Reset complete: X leagues processed"
-
----
-
-### 5. Weekly XP tracking
-
-When useSaveProgress saves a completed lesson:
-  Also call: supabase.rpc('increment_weekly_xp', { user_id, xp_amount })
-
-Create the RPC in a migration:
-  CREATE OR REPLACE FUNCTION increment_weekly_xp(user_id uuid, xp_amount int)
-  RETURNS void AS $$
-    UPDATE league_members
-    SET weekly_xp = weekly_xp + xp_amount
-    WHERE league_members.user_id = $1;
-  $$ LANGUAGE sql SECURITY DEFINER;
-
----
-
-### 6. Tab bar update
-
-Update /app/(tabs)/_layout.tsx to include 4 tabs:
-  home | progress | leagues | profile
-
-Leagues tab icon: a simple podium SVG (3 bars of different heights).
-Active state: teal icon + teal dot + teal label.
-
----
-
-### 7. Friends tab (stub)
-
-"friends" tab shows:
-  - "Invite friends to compete" card with share button
-  - Share link: https://phonicsflow.app/join/[user_id]
-  - Empty state if no friends yet: "No friends yet — share your link!"
-  - Use Expo Sharing for the share action
-
-Full friends social graph is Sprint 3 scope. This sprint: invite link only.
-
----
-
-### Delight moments
-
-When user opens leaderboard and sees they've climbed:
-  - Movement badge "+N" pulses once with Reanimated scale spring
-  - soundEngine.play('streakContinue') at 0.5 volume
-  - haptics.tap()
-
-When user reaches top 3 for the first time:
-  - Show StreakModal-style banner: "You're in the top 3!"
-  - soundEngine.play('perfect')
-  - haptics.celebrate()
+### Optional delight
+- Light haptic on pull-to-refresh when list updates; no podium/league promotion UI
 ```
 
 ---
@@ -458,9 +313,8 @@ When user reaches top 3 for the first time:
 - [ ] Audio plays for all 15 words
 - [ ] Quiz score saves to Supabase
 - [ ] Lesson complete ceremony plays (confetti + score count + stars)
-- [ ] Leaderboard screen renders with mock data
-- [ ] Tab bar has 4 tabs: home, progress, leagues, profile
-- [ ] Weekly XP increments when lesson completes
+- [ ] **Friends** tab: invite share, empty state, friends list with XP comparison (no leagues)
+- [ ] Tab bar has 4 tabs: **home, progress, friends, profile**
 - [ ] No TypeScript errors
 - [ ] No crashes on happy path
 
@@ -473,5 +327,5 @@ When user reaches top 3 for the first time:
 - Streak tracking + XP system fully wired
 - RevenueCat paywall (free: 3 lessons, pro: unlimited)
 - Push notifications for streak reminders
-- Friends social graph (follow, compare, invite)
+- Deeper friends UX (in-app nudges, richer progress breakdown)
 - More word families seeded (all short vowel families)

@@ -294,47 +294,114 @@ describe('dedupeByLesson logic', () => {
 
 // ── WordsLen helper (from home.tsx) ───────────────────────────────────────────
 
-describe('wordsLen helper', () => {
-  const wordsLen = (prog: UserProgress | undefined): number => {
-    if (!prog) return 0
-    const m = prog.words_mastered
-    if (Array.isArray(m)) return m.length
-    if (typeof m === 'string') {
-      try { return JSON.parse(m).length } catch { return 0 }
-    }
-    return 0
-  }
+describe('wordsMasteredArray', () => {
+  const { wordsMasteredArray } = require('../lib/lessonProgress')
 
-  it('returns 0 for undefined', () => {
-    expect(wordsLen(undefined)).toBe(0)
+  const mk = (wm: unknown): UserProgress => ({
+    user_id: 'u1', lesson_id: 'l1', completed: false,
+    score: 0, xp_earned: 0, completed_at: '',
+    words_mastered: wm as string[],
+    words_skipped: [],
   })
 
-  it('returns length of array', () => {
+  it('returns empty array for undefined', () => {
+    expect(wordsMasteredArray(undefined)).toEqual([])
+  })
+
+  it('returns the array as-is when already an array', () => {
+    expect(wordsMasteredArray(mk(['a', 'b']))).toEqual(['a', 'b'])
+  })
+
+  it('returns empty array for an empty array', () => {
+    expect(wordsMasteredArray(mk([]))).toEqual([])
+  })
+
+  it('parses a JSON string', () => {
+    expect(wordsMasteredArray(mk(JSON.stringify(['x', 'y', 'z'])))).toEqual(['x', 'y', 'z'])
+  })
+
+  it('returns empty array for invalid JSON string', () => {
+    expect(wordsMasteredArray(mk('not-json'))).toEqual([])
+  })
+
+  it('returns empty array for a non-array JSON value', () => {
+    expect(wordsMasteredArray(mk(JSON.stringify({ a: 1 })))).toEqual([])
+  })
+
+  it('returns empty array for null words_mastered', () => {
+    expect(wordsMasteredArray(mk(null))).toEqual([])
+  })
+})
+
+describe('wordsMasteredLength', () => {
+  const { wordsMasteredLength } = require('../lib/lessonProgress')
+
+  it('returns 0 for undefined', () => {
+    expect(wordsMasteredLength(undefined)).toBe(0)
+  })
+
+  it('returns array length', () => {
     const p: UserProgress = {
       user_id: 'u1', lesson_id: 'l1', completed: false,
       score: 0, xp_earned: 0, completed_at: '',
       words_mastered: ['a', 'b', 'c'], words_skipped: [],
     }
-    expect(wordsLen(p)).toBe(3)
+    expect(wordsMasteredLength(p)).toBe(3)
   })
 
-  it('parses JSON string', () => {
+  it('parses JSON string for length', () => {
+    const p: UserProgress = {
+      user_id: 'u1', lesson_id: 'l1', completed: false,
+      score: 0, xp_earned: 0, completed_at: '',
+      words_mastered: JSON.stringify(['a', 'b']) as unknown as string[],
+      words_skipped: [],
+    }
+    expect(wordsMasteredLength(p)).toBe(2)
+  })
+
+  it('returns 0 for invalid JSON string', () => {
+    const p: UserProgress = {
+      user_id: 'u1', lesson_id: 'l1', completed: false,
+      score: 0, xp_earned: 0, completed_at: '',
+      words_mastered: 'bad' as unknown as string[],
+      words_skipped: [],
+    }
+    expect(wordsMasteredLength(p)).toBe(0)
+  })
+})
+
+describe('hasWordsMastered', () => {
+  const { hasWordsMastered } = require('../lib/lessonProgress')
+
+  it('returns false for undefined', () => {
+    expect(hasWordsMastered(undefined)).toBe(false)
+  })
+
+  it('returns false for empty array', () => {
+    const p: UserProgress = {
+      user_id: 'u1', lesson_id: 'l1', completed: false,
+      score: 0, xp_earned: 0, completed_at: '',
+      words_mastered: [], words_skipped: [],
+    }
+    expect(hasWordsMastered(p)).toBe(false)
+  })
+
+  it('returns true for non-empty array', () => {
+    const p: UserProgress = {
+      user_id: 'u1', lesson_id: 'l1', completed: false,
+      score: 0, xp_earned: 0, completed_at: '',
+      words_mastered: ['a'], words_skipped: [],
+    }
+    expect(hasWordsMastered(p)).toBe(true)
+  })
+
+  it('returns true for non-empty JSON string', () => {
     const p = {
       user_id: 'u1', lesson_id: 'l1', completed: false,
       score: 0, xp_earned: 0, completed_at: '',
       words_mastered: JSON.stringify(['a', 'b']) as unknown as string[],
       words_skipped: [],
     }
-    expect(wordsLen(p)).toBe(2)
-  })
-
-  it('returns 0 for invalid JSON string', () => {
-    const p = {
-      user_id: 'u1', lesson_id: 'l1', completed: false,
-      score: 0, xp_earned: 0, completed_at: '',
-      words_mastered: 'not-json' as unknown as string[],
-      words_skipped: [],
-    }
-    expect(wordsLen(p)).toBe(0)
+    expect(hasWordsMastered(p)).toBe(true)
   })
 })

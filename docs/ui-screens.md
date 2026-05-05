@@ -273,15 +273,32 @@ Do not deviate without explicit instruction.
 
 ## Friends (`/(tabs)/friends`)
 
+Social progress is **friends-only** (no leagues or random matchmaking). People show up after an **invite/referral link** signs up, or after **onboarding contacts**: with permission, emails are matched server-side (`find_users_by_emails`); matches create `friendships` rows—**raw contact emails stay on device**, only matched account IDs are linked.
+
 - White top bar: title **Friends** (bold, left)
 - Main area background **#F1EFE8**
-- **Empty state (no friends yet):**
-  - Centered **🤝**
-  - Title: **Learning is better with friends**
-  - Body: **Share your invite code and when a friend signs up, you'll see their progress here.**
-  - Primary CTA: **Invite a friend** — full-width-ish green pill, **share-outline** icon + white label
-  - Hint below button (small gray): when a friend uses your invite link they appear automatically; progress compare
-- **Populated state:** scroll list of friend cards (avatar initials, name, streak + XP line, XP diff vs you)
+
+**Invite row (always visible when referral code exists)**  
+- Prominent teal card: **Invite friends to PhonicsFlow** · subline explains **share link**; when they sign up with your link they appear on this screen. **Share** action (share sheet).
+
+**Empty state (no friendships yet)**  
+- Centered **🤝**, title **Learning is better with friends**  
+- Body: share your **invite link**; optionally note that **contacts access** (during onboarding) can surface people already on the app without sharing numbers.  
+- Primary CTA **Invite a friend** (share)  
+- Muted hint: link signups and contact matches both add friends here.
+
+**Populated state**  
+- **Leader summary** (neutral or light mint card below invite): ranks **you + all friends** by **total XP**—e.g. *You're 1st among 4 learners* or *You're 3rd · 120 XP behind the lead*. If you're alone, gentle nudge to invite.  
+- Eyebrow: **N friends · sorted by XP**  
+- Scroll list: friend cards with **rank badge** (#1, #2…), avatar initials, name, **streak + XP**; secondary line (**once migration `023` is applied**) compares completed lessons — **rolling last 7 days** vs yours and **all-time completed-lesson count** vs yours; muted line keeps **XP ahead/behind you**
+- Pull to refresh refreshes friendships + RPC stats  
+- **Contacts scan** (neutral row below invite area): rerun contact → email match anytime; alerts for denial / number of newly linked profiles  
+- **In-app bell**: when comparing to a lightweight **XP snapshot** from the prior visit on this device, if a friend's **total XP crossed above yours**, insert a **`friend_pull_ahead`** row (deeplink `/(tabs)/friends`; same-type throttled ~6h per friend)  
+
+**Backend**  
+- `friendships` + `profiles` as above  
+- **`get_friends_lesson_stats()`**: `SECURITY DEFINER`, returns lesson counts **only for users who share a friendship** with the caller (RLS-safe friend visibility).
+
 - Bottom tab: **Friends** active
 
 ---
@@ -299,48 +316,3 @@ Do not deviate without explicit instruction.
 - No Apple Sign In button (Google + email only)
 - Audio speed lives in profile settings only — not in lesson screens
 
----
-
-## Screen 14 — Leaderboard (Leagues)
-
-> **Note:** Spec below is the approved **Leagues** experience. The **main app tab bar uses Friends** (Screen Friends above), not Leagues. Implement Leagues as a **stack/modal entry** from home/progress when wired, or retain spec for a future tab swap.
-
-- Background: #F1EFE8
-- White header:
-  - Title: "leaderboard" 20px weight 500
-  - "Teal League" badge top right — green dot + text, #E1F5EE bg
-  - 3-tab toggle below: "this week" / "all time" / "friends"
-    - Active tab: white bg, #2C2C2A text. Inactive: transparent, #888780
-- "resets in X days · top 3 promote to Gold League" — 11px muted, below tabs
-
-- Podium (white bg, no bottom padding — list sits flush below):
-  - 3-column podium, tallest block in center (#1)
-  - Block heights: 1st = 72px (#1D9E75), 2nd = 56px (#5DCAA5), 3rd = 44px (#9FE1CB)
-  - Block width: 1st = 72px, 2nd + 3rd = 60px
-  - Avatar above each block: initials circle, colored border matching block
-  - Crown emoji above 1st place avatar
-  - Name (truncated) + XP below avatar, above block
-  - Rank number inside block, white, 13px
-
-- Scrollable list below podium:
-  - Ranks 4–10 shown as rows
-  - Each row: rank number, avatar (initials, colored bg), name, streak, XP, movement badge
-  - Movement badges: green "+N" on #E1F5EE for climbing, red "-N" on #FCEBEB for dropping
-  - User's own row (rank 7):
-    - #E1F5EE background, #1D9E75 border
-    - Teal avatar with white initial
-    - "(you)" appended to name
-    - Divider lines above and below to visually separate from others
-  - Scroll works — bottom entries fully reachable
-
-- When shown inside app shell: tab active state follows **current route** (if Leagues is its own tab in a future build, use same teal active treatment as other tabs)
-
-## Leagues System (backend logic)
-
-- Each user is placed in a league of ~10 people with similar XP levels
-- Leagues: Teal → Gold → Diamond → Master (4 tiers)
-- Weekly reset every Sunday midnight
-- Top 3 of each league promote up one tier
-- Bottom 2 demote down one tier
-- XP earned during the week is the ranking metric (not total XP)
-- **Friends tab** (primary nav): lists users linked via **referral / invite** (`friendships`); invite flow uses share sheet + invite code (see Friends screen spec)

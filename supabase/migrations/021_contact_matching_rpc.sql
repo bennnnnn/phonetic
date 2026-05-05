@@ -33,5 +33,12 @@ GRANT EXECUTE ON FUNCTION public.find_users_by_emails(text[]) TO authenticated;
 -- Allow either party to create a contact-discovered friendship
 -- (existing insert policy only allows referred_id = current user)
 -- We add a second policy covering the referrer side.
-CREATE POLICY "friends_insert_referrer" ON public.friendships
-  FOR INSERT WITH CHECK (auth.uid() = referrer_id);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'friendships' AND policyname = 'friends_insert_referrer'
+  ) THEN
+    CREATE POLICY "friends_insert_referrer" ON public.friendships
+      FOR INSERT WITH CHECK (auth.uid() = referrer_id);
+  END IF;
+END $$;

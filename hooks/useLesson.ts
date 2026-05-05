@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Lesson, WordFamily } from '@/lib/types'
 
@@ -17,6 +17,12 @@ export function useLesson(lessonId: string): UseLessonReturn {
   const [lesson, setLesson] = useState<LessonWithFamily | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
 
   const fetchLesson = useCallback(async () => {
     if (!lessonId) return
@@ -36,12 +42,14 @@ export function useLesson(lessonId: string): UseLessonReturn {
         .eq('id', lessonId)
         .single()
 
+      if (!mountedRef.current) return
       if (sbError) throw sbError
       setLesson(data as LessonWithFamily)
     } catch (err) {
+      if (!mountedRef.current) return
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
-      setLoading(false)
+      if (mountedRef.current) setLoading(false)
     }
   }, [lessonId])
 

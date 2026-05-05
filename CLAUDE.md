@@ -1,7 +1,12 @@
+---
+description: PhonicsFlow handbook — stack, tokens, UI rules, auth; see docs/ui-screens.md for screens.
+alwaysApply: true
+---
+
 # PhonicsFlow — Agent Instructions
 
 ## What We're Building
-A mobile app (iOS + Android) that teaches English phonics via pattern decoding and AI-powered TTS.
+A mobile app (iOS + Android) that teaches English phonics via pattern decoding, with lesson audio from **stored files** (Supabase Storage URLs) and **cloud/device TTS** as fallback where needed.
 Core idea: show users the "secret" behind English spelling patterns so they can decode any word.
 Target users: ESL learners, children learning to read, adults with dyslexia.
 Goal: 4.9 App Store rating.
@@ -14,10 +19,10 @@ Goal: 4.9 App Store rating.
 
 | Layer | Tech |
 |-------|------|
-| Framework | React Native + Expo SDK 52 |
+| Framework | React Native + Expo SDK 54|
 | Navigation | Expo Router v3 |
 | Backend | Supabase (auth, db, storage) |
-| TTS | ElevenLabs (primary), Expo Speech (fallback) |
+| TTS | Google Cloud TTS (`lib/googleTts.ts`, primary in `useAudio`), Expo Speech (fallback) |
 | Speech Recognition | OpenAI Whisper |
 | Payments | RevenueCat |
 | State | Zustand |
@@ -32,11 +37,11 @@ Goal: 4.9 App Store rating.
 
 ```
 /app
-  /(auth)               → splash, onboarding (4 screens), signup
+  /(auth)               → splash, onboarding (multi-step — see app/(auth)/onboarding/), signup
   /(tabs)
     /home               → home screen
     /progress           → progress screen
-    /leagues            → leaderboard screen
+    /friends            → friends: invites, contacts matches, XP leaderboard vs friends
     /profile            → profile + settings screen
   /lesson/[id]          → word learning step
   /sentences/[id]       → sentences step
@@ -44,7 +49,7 @@ Goal: 4.9 App Store rating.
   /complete/[id]        → lesson complete ceremony
 
 /components
-  /ui                   → Button, Card, Skeleton, Toggle, ErrorState, EmptyState
+  /ui                   → Button, Skeleton, ErrorState, etc. (see components/ui/)
   /lesson               → WordCard, PatternDisplay, AudioButton, QueueStrip
   /quiz                 → QuizOption, ScoreBar
   /sentences            → SentenceCard, HintStrip
@@ -60,7 +65,7 @@ Goal: 4.9 App Store rating.
 
 /lib
   /supabase.ts
-  /elevenlabs.ts
+  /googleTts.ts
   /whisper.ts
   /revenuecat.ts
   /tokens.ts
@@ -92,6 +97,10 @@ Goal: 4.9 App Store rating.
   /ui-screens.md        → ALL approved screen specs — read before building any screen
   /sprint-1.md
 ```
+
+### Database migrations
+
+Use the **next free numeric prefix** for new files under `supabase/migrations/` (e.g. `024_description.sql`). The tree already contains **legacy duplicate prefixes** (`006_*`, `007_*`); do **not** rename migration files that may already be applied on a remote database without a deliberate repair plan.
 
 ---
 
@@ -206,7 +215,7 @@ type WordStatus = 'unseen' | 'mastered' | 'skipped'
 7. **Quiz has no next button** — auto-advances after correct (900ms) or wrong (1400ms)
 8. **Lesson complete is a full teal screen takeover** — not a modal, not a toast
 9. **All toggles default ON**: sound effects, haptics, notifications
-10. **4 tabs**: home, progress, leagues, profile — in that order
+10. **4 tabs**: home, progress, friends, profile — in that order
 11. **Scroll must work on profile screen** — all settings sections reachable by scroll
 12. **Word learning queue**: horizontal scroll, shows current batch only
 
@@ -262,6 +271,7 @@ SoundEngine and haptics must check these before playing/firing.
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_KEY=
+# Optional: legacy / script-based audio generation only if you still use it
 ELEVENLABS_API_KEY=
 OPENAI_API_KEY=
 # Google Cloud TTS (primary TTS provider — higher quality than device TTS)
@@ -292,9 +302,12 @@ REVENUECAT_ANDROID_KEY=
 |------|-----------|
 | Building any screen | /docs/ui-screens.md + /skills/create-screen.md |
 | Supabase data hooks | /skills/create-supabase-hook.md |
-| Audio playback + TTS | /skills/add-tts-audio.md |
+| Lesson audio (storage URLs + playback, batch generation) | /skills/add-tts-audio.md |
 | Any user interaction | /skills/delight-system.md |
 | Celebration moments | /skills/celebration-components.md |
+| Supabase DB / RLS / migrations | Bundled skills under `.agents/skills/supabase*` (also linked from `.claude/skills/`) |
+| Onboarding, Friends, permissions UX | `.cursor/skills/phonicsflow-interactive-experience/SKILL.md` |
+| Keeping skills / CLAUDE / rules aligned with code | `.cursor/skills/phonicsflow-skill-maintenance/SKILL.md` + `.cursor/hooks.json` (postToolUse reminder) |
 
 ---
 

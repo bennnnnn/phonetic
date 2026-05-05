@@ -16,6 +16,7 @@ import { updateStreak } from '@/lib/streak'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS, GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
 import { PROVERB_GROUPS } from '@/data/proverbs'
 import { IDIOM_GROUPS, IDIOM_NODES } from '@/data/idioms'
+import { PHRASAL_VERB_GROUPS, PHRASAL_VERB_NODES } from '@/data/phrasalVerbs'
 import ConfettiBurst from '@/components/celebrations/ConfettiBurst'
 import { Star } from '@/components/celebrations/CompleteShared'
 import { haptics } from '@/lib/haptics'
@@ -25,21 +26,24 @@ import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
 export default function GroupCompleteScreen() {
   const { theme } = useLocalSearchParams<{ theme: string }>()
-  const { wordsMastered, resetLesson } = useLessonStore()
+  const { wordsMastered, quizScore, quizTotal, resetLesson } = useLessonStore()
   const { profile } = useProfile()
   const { user } = useAuthStore()
   const saved = useRef(false)
 
   const { words } = useGroupLesson(theme ?? '')
 
-  const themeData    = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme] ?? IDIOM_GROUPS[theme]
+  const themeData    = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme] ?? IDIOM_GROUPS[theme] ?? PHRASAL_VERB_GROUPS[theme]
   const isProverb    = !!PROVERB_GROUPS[theme]
   const isIdiom      = !!IDIOM_GROUPS[theme]
+  const isPhrasal    = !!PHRASAL_VERB_GROUPS[theme]
   const title        = `${themeData?.emoji ?? '🗂'} ${theme}`
   const streakDays   = profile?.streak_days ?? 0
   const wordsMasteredCount = words.length || wordsMastered.length
 
   const xpEarned = Math.max(10, wordsMasteredCount * 4 + 25)
+  const quizPct = quizTotal > 0 ? Math.round((quizScore / quizTotal) * 100) : 100
+  const starCount = quizPct >= 90 ? 3 : quizPct >= 70 ? 2 : 1
 
   const cardTranslateY = useSharedValue(300)
   const scoreScale     = useSharedValue(0)
@@ -57,8 +61,8 @@ export default function GroupCompleteScreen() {
       supabase.from('group_progress').upsert(
         { user_id: user.id, group_name: theme, completed: true, completed_at: new Date().toISOString() },
         { onConflict: 'user_id,group_name' },
-      ).then(() => {}, () => {})
-      try { void updateStreak(user.id) } catch {}
+      ).then(() => {}, (err) => console.warn('[group-complete] upsert failed:', err))
+      try { void updateStreak(user.id) } catch (err) { console.warn('[group-complete] streak update failed:', err) }
       try {
         void pushNotification({
           userId: user.id, type: 'group_complete',
@@ -99,6 +103,10 @@ export default function GroupCompleteScreen() {
     if (idiomIdx !== -1 && idiomIdx < IDIOM_NODES.length - 1) {
       router.replace(ROUTES.GROUP_LESSON(IDIOM_NODES[idiomIdx + 1]!.id)); return
     }
+    const phrasalIdx = PHRASAL_VERB_NODES.findIndex((g) => g.id === theme)
+    if (phrasalIdx !== -1 && phrasalIdx < PHRASAL_VERB_NODES.length - 1) {
+      router.replace(ROUTES.GROUP_LESSON(PHRASAL_VERB_NODES[phrasalIdx + 1]!.id)); return
+    }
     router.replace(ROUTES.HOME)
   }
 
@@ -114,15 +122,15 @@ export default function GroupCompleteScreen() {
         <Text style={styles.headline}>You crushed it!</Text>
         <Text style={styles.patternSubtitle}>{title}</Text>
         <View style={styles.stars}>
-          <Star filled={true} delay={900} />
-          <Star filled={true} delay={1100} />
-          <Star filled={true} delay={1300} />
+          <Star filled={starCount >= 1} delay={900} />
+          <Star filled={starCount >= 2} delay={1100} />
+          <Star filled={starCount >= 3} delay={1300} />
         </View>
       </View>
 
       <Animated.View style={[styles.bottomCard, cardStyle]}>
         <Animated.View style={[styles.scoreCircle, scoreStyle]}>
-          <Text style={styles.scoreNum}>100</Text>
+          <Text style={styles.scoreNum}>{quizPct}</Text>
           <Text style={styles.scorePct}>%</Text>
         </Animated.View>
 
@@ -170,7 +178,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 1.2,
   },
   headline:       { color: '#fff', fontSize: 32, fontWeight: '800' },
-  patternSubtitle: { fontSize: fontSize.md, color: '#9FE1CB', marginTop: 4 },
+  patternSubtitle: { fontSize: fontSize.md, color: colors.primaryTint, marginTop: 4 },
   stars: { flexDirection: 'row', gap: spacing.sm },
 
   bottomCard: {

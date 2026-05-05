@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
+import { useEffect, useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import { router } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
@@ -7,6 +7,7 @@ import Animated, {
   withSpring, withTiming, withDelay, withSequence,
 } from 'react-native-reanimated'
 import { haptics } from '@/lib/haptics'
+import { signInWithGoogle } from '@/lib/supabase'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 
 const PERKS = [
@@ -33,6 +34,20 @@ function PerkRow({ emoji, text, delay }: { emoji: string; text: string; delay: n
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets()
+  const [googleLoading, setGoogleLoading] = useState(false)
+
+  const handleGoogle = async () => {
+    haptics.tap()
+    setGoogleLoading(true)
+    try {
+      await signInWithGoogle()
+      router.replace('/(tabs)/home')
+    } catch {
+      // User cancelled or error — silently ignore on signup screen
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
 
   const logoScale = useSharedValue(0.7)
   const logoOp    = useSharedValue(0)
@@ -73,10 +88,21 @@ export default function SignupScreen() {
       <Animated.View style={[styles.sheet, sheetStyle, { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xl) }]}>
         <Text style={styles.headline}>Create your account</Text>
 
-        {/* Google — coming soon */}
-        <TouchableOpacity style={styles.googleBtn} disabled activeOpacity={1}>
-          <View style={styles.googleIcon}><Text style={styles.googleG}>G</Text></View>
-          <Text style={styles.googleLabel}>Continue with Google</Text>
+        {/* Google */}
+        <TouchableOpacity
+          style={[styles.googleBtn, googleLoading && styles.googleBtnDisabled]}
+          onPress={handleGoogle}
+          disabled={googleLoading}
+          activeOpacity={0.85}
+        >
+          {googleLoading ? (
+            <ActivityIndicator color={colors.text} />
+          ) : (
+            <>
+              <View style={styles.googleIcon}><Text style={styles.googleG}>G</Text></View>
+              <Text style={styles.googleLabel}>Continue with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         {/* Divider */}
@@ -172,8 +198,8 @@ const styles = StyleSheet.create({
     gap: 10, backgroundColor: colors.surface,
     borderWidth: 1.5, borderColor: colors.border,
     borderRadius: 14, paddingVertical: 15,
-    opacity: 0.55,
   },
+  googleBtnDisabled: { opacity: 0.55 },
   googleIcon: {
     width: 24, height: 24, borderRadius: 12,
     backgroundColor: '#FEE9E0',

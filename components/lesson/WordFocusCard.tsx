@@ -284,8 +284,8 @@ export default function WordFocusCard({ word, onMaster, onSkip, index, total, wo
             <View style={styles.wordContent}>
               <View style={styles.wordRow}>
                 <View style={styles.wordLabel}>
-                  <Text style={[styles.wordText, word.id.startsWith('idiom:') && styles.wordTextIdiom]}>
-                    {word.id.startsWith('idiom:') ? word.text : (
+                  <Text style={[styles.wordText, (word.id.startsWith('idiom:') || word.id.startsWith('phrasal:')) && styles.wordTextIdiom]}>
+                    {word.id.startsWith('idiom:') || word.id.startsWith('phrasal:') ? word.text : (
                       <>
                         <Text style={styles.consonant}>{word.consonant}</Text>
                         <Text style={styles.pattern}>{word.pattern}</Text>
@@ -340,7 +340,13 @@ export default function WordFocusCard({ word, onMaster, onSkip, index, total, wo
                 </View>
               )}
 
-              {(!word.pastText || !VERB_EXAMPLES[word.text.toLowerCase()]) && (() => {
+              {word.example && (
+                <View style={styles.defCard}>
+                  <Text style={styles.defCardLabel}>example:</Text>
+                  <TappableTranslatedSentence sentence={word.example} />
+                </View>
+              )}
+              {!word.example && (!word.pastText || !VERB_EXAMPLES[word.text.toLowerCase()]) && (() => {
                 const key = word.text.toLowerCase()
                 const ex = WORD_EXAMPLES[key]
                 if (!ex) return null
@@ -391,11 +397,11 @@ const styles = StyleSheet.create({
   verbFormRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   verbFormPast: { fontSize: 28, fontFamily: 'Georgia', lineHeight: 36, color: colors.text, fontWeight: '700' },
   verbFormPart: { fontSize: 22, fontFamily: 'Georgia', lineHeight: 30, color: colors.primary, fontWeight: '700' },
-  exampleSentence: { fontSize: fontSize.md, color: colors.textSecondary, fontStyle: 'italic', lineHeight: 20 },
+  exampleSentence: { fontSize: fontSize.md, color: colors.textMuted, fontStyle: 'italic', lineHeight: 20 },
   definition: { fontSize: fontSize.lg, color: colors.text, lineHeight: 24 },
   defCard: { backgroundColor: colors.primaryLight, borderRadius: radius.lg, padding: spacing.sm, gap: spacing.xs },
   defCardLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  verbDefText: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 18, fontStyle: 'italic' },
+  verbDefText: { fontSize: fontSize.sm, color: colors.textMuted, lineHeight: 18, fontStyle: 'italic' },
   labelText: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8, backgroundColor: colors.neutral, alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1, marginBottom: 2, overflow: 'hidden' },
   proverbContent: { gap: spacing.md, justifyContent: 'flex-start', paddingTop: spacing.md },
   proverbText: { fontSize: 22, fontFamily: 'Georgia', lineHeight: 30, color: colors.text, textAlign: 'left' },

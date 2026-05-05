@@ -1,0 +1,31 @@
+---
+description: PhonicsFlow — approved UI, social features, Expo RN quality (always apply in this repo)
+alwaysApply: true
+---
+
+# PhonicsFlow — agent baseline
+
+**Layering (minimal duplication):** `CLAUDE.md` = stack, tokens, Key UI Rules, auth, env. `docs/ui-screens.md` = approved screen copy and layout. This rule = routing + social/permissions reminders. For deep onboarding/Friends workflows, load `.cursor/skills/phonicsflow-interactive-experience/SKILL.md` when relevant.
+
+**Staying in sync:** After **Write** / **StrReplace** on hot paths, `.cursor/hooks/skill-sync-reminder.js` may inject a short **skill/doc sync** note. Use `.cursor/skills/phonicsflow-skill-maintenance/SKILL.md` for the full “if you changed X, update Y” map (hooks do not auto-edit skills).
+
+## Source of truth
+
+- **Screens and flows:** `docs/ui-screens.md` — match copy, layout, tokens, and tab order unless the user explicitly says to change the spec.
+- **Design tokens and lesson UI rules:** `CLAUDE.md` (colors, Georgia for pattern words, consonant `#B4B2A9` / pattern `#1D9E75`, delight/haptics/sound patterns).
+
+## Product intent (short)
+
+- **Onboarding:** Interactive, low friction, clear next step; **pre-permission screens** must explain *why* before the OS contacts / notifications dialogs (Friends + reminders).
+- **Friends:** Friends-only social model per `docs/ui-screens.md` — invite link + optional contact match; **no** public leagues / random matchmaking unless spec is updated.
+- **Leaderboard:** XP ordering and “among N learners” summary as in the Friends section of `docs/ui-screens.md`; respect privacy (matched contacts only; raw emails stay on device per spec).
+
+## React Native / Expo
+
+- Prefer **fast lists** (memoized rows, stable keys, avoid heavy work on scroll); lazy-load where sensible.
+- Reuse existing hooks (`useFriends`, `useProfile`, `useProgress`, notifications/contacts libs) instead of duplicating fetches.
+- After permission or auth changes, keep UI state and cache invalidation consistent (focus refresh, pull-to-refresh where spec says so).
+
+## When unsure
+
+Open the relevant section of `docs/ui-screens.md` first, then implement.

@@ -2,6 +2,7 @@ export const colors = {
   primary: '#1D9E75',
   primaryLight: '#E1F5EE',
   primaryMid: '#5DCAA5',
+  primaryTint: '#9FE1CB',   // light teal — for text/elements on dark teal backgrounds
   primaryDark: '#085041',
   primaryDeep: '#0F6E56',
   accent: '#F0997B',
@@ -19,6 +20,13 @@ export const colors = {
   borderLight: '#E1F5EE',
   error: '#E24B4A',
   errorLight: '#FCEBEB',
+  // Chapter accent colors — one per content type
+  chapterVocab:   '#5856D6',
+  chapterVerbs:   '#AF52DE',
+  chapterHomo:    '#FF9500',
+  chapterProverb: '#FF6B35',
+  chapterIdioms:  '#E67E22',
+  chapterPhrasal: '#5B8FE0',
 }
 
 export const spacing = {

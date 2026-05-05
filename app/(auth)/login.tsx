@@ -4,7 +4,6 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
   Alert, Modal, Pressable,
 } from 'react-native'
-import * as Linking from 'expo-linking'
 import { router } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
@@ -13,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { Ionicons } from '@expo/vector-icons'
 import { friendlyEmailAuthMessage, isEmailRateLimited } from '@/lib/authErrors'
-import { supabase } from '@/lib/supabase'
+import { supabase, signInWithGoogle } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { haptics } from '@/lib/haptics'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
@@ -27,6 +26,7 @@ export default function LoginScreen() {
   const [password,        setPassword]        = useState('')
   const [showPassword,    setShowPassword]    = useState(false)
   const [loading,         setLoading]         = useState(false)
+  const [googleLoading,   setGoogleLoading]   = useState(false)
   const [error,           setError]           = useState<string | null>(null)
   const [emailFocused,    setEmailFocused]    = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
@@ -70,10 +70,19 @@ export default function LoginScreen() {
     setTimeout(() => emailRef.current?.focus(), 120)
   }
 
-  const handleGoogle = () => {
+  const handleGoogle = async () => {
     haptics.tap()
-    setError('Google sign-in coming soon — use email for now.')
-    setTimeout(() => setError(null), 4000)
+    setGoogleLoading(true)
+    setError(null)
+    try {
+      await signInWithGoogle()
+      router.replace('/(tabs)/home')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Google sign in failed. Please try again.'
+      if (!msg.includes('cancelled') && !msg.includes('cancel')) setError(msg)
+    } finally {
+      setGoogleLoading(false)
+    }
   }
 
   const openForgot = () => {
@@ -95,7 +104,7 @@ export default function LoginScreen() {
     try {
       setForgotSending(true)
       setForgotMessage(null)
-      const redirectTo = Linking.createURL('/(auth)/reset-password')
+      const redirectTo = 'phonicsflow:///(auth)/reset-password'
       const { error: resetErr } = await supabase.auth.resetPasswordForEmail(trimmed, { redirectTo })
       if (resetErr) throw resetErr
       lastResetRequestAt.current = Date.now()
@@ -158,9 +167,20 @@ export default function LoginScreen() {
             {/* Step 1: Google + email button — hidden after email tapped */}
             {!emailExpanded && (
               <>
-                <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle} activeOpacity={0.85}>
-                  <View style={styles.googleIcon}><Text style={styles.googleG}>G</Text></View>
-                  <Text style={styles.googleLabel}>Continue with Google</Text>
+                <TouchableOpacity
+                  style={[styles.googleBtn, googleLoading && styles.disabled]}
+                  onPress={handleGoogle}
+                  disabled={googleLoading}
+                  activeOpacity={0.85}
+                >
+                  {googleLoading ? (
+                    <ActivityIndicator color={colors.text} />
+                  ) : (
+                    <>
+                      <View style={styles.googleIcon}><Text style={styles.googleG}>G</Text></View>
+                      <Text style={styles.googleLabel}>Continue with Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 <View style={styles.dividerRow}>

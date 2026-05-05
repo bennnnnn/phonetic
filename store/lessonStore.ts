@@ -9,6 +9,8 @@ type LessonStore = {
   groupNeedsRefresh: boolean
   completedGroups: string[]
   startLesson: (lessonId: string) => void
+  /** Hydrate the lesson store with previously saved progress (e.g. from Supabase). */
+  resumeLesson: (lessonId: string, mastered: string[], skipped: string[]) => void
   masterWord: (wordId: string) => void
   skipWord: (wordId: string) => void
   setQuizResult: (score: number, total: number) => void
@@ -26,6 +28,7 @@ export const useLessonStore = create<LessonStore>((set) => ({
   groupNeedsRefresh: false,
   completedGroups: [],
   startLesson: (lessonId) => set({ lessonId, wordsMastered: [], wordsSkipped: [], quizScore: 0, quizTotal: 0 }),
+  resumeLesson: (lessonId, mastered, skipped) => set({ lessonId, wordsMastered: mastered, wordsSkipped: skipped, quizScore: 0, quizTotal: 0 }),
   masterWord: (wordId) => set((s) => ({ wordsMastered: [...s.wordsMastered, wordId] })),
   skipWord: (wordId) => set((s) => ({ wordsSkipped: [...s.wordsSkipped, wordId] })),
   setQuizResult: (score, total) => set({ quizScore: score, quizTotal: total }),

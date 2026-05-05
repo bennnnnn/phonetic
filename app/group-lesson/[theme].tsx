@@ -8,9 +8,9 @@ import { useAuthStore } from '@/store/authStore'
 import { useProfile } from '@/hooks/useProfile'
 import { prefetchTranslations } from '@/hooks/useTranslation'
 import { supabase } from '@/lib/supabase'
+import { wordsMasteredArray } from '@/lib/lessonProgress'
 import { haptics } from '@/lib/haptics'
 import { soundEngine } from '@/lib/sounds'
-import { updateStreak } from '@/lib/streak'
 import { ROUTES } from '@/lib/routes'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS } from '@/lib/practiceThemes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
@@ -22,16 +22,34 @@ import { LessonCompleteBanner } from '@/components/lesson/BannerBar'
 import LessonHeader from '@/components/lesson/LessonHeader'
 import type { Word } from '@/lib/types'
 
+const ARTICLES = new Set(['a', 'an', 'the'])
+
+/** First significant word (skipping articles) + "..." for long labels like proverbs. */
+function shortLabel(text: string): string {
+  const parts = text.split(/\s+/)
+  for (const part of parts) {
+    const clean = part.replace(/^["']|["',.!?:;]+$/g, '').toLowerCase()
+    if (!ARTICLES.has(clean) && clean.length > 0) {
+      const ellipsis = parts.length > 1 ? '...' : ''
+      return part.replace(/[,.!?:;]+$/, '') + ellipsis
+    }
+  }
+  // All words were articles — fallback to first word
+  return parts[0]?.replace(/[,.!?:;]+$/, '') ?? '...'
+}
+
 export default function GroupLessonScreen() {
   const { theme } = useLocalSearchParams<{ theme: string }>()
   const { words, loading, error, refetch } = useGroupLesson(theme)
-  const { masterWord, skipWord, wordsMastered, wordsSkipped, startLesson } = useLessonStore()
+  const { masterWord, skipWord, wordsMastered, wordsSkipped, startLesson, resumeLesson } = useLessonStore()
   const { user } = useAuthStore()
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [hydrated, setHydrated] = useState(false)
 
   const themeData    = WORD_THEMES[theme] ?? IRREGULAR_VERB_GROUPS[theme] ?? HOMOPHONE_GROUPS[theme]
   const title        = `${themeData?.emoji ?? '🗂'} ${theme}`
   const sortedWords = [...words].sort((a, b) => a.text.localeCompare(b.text))
+  const isProverb    = sortedWords[0]?.id.startsWith('proverb:')
 
   // Save incremental progress to Supabase on each action
   const saveProgress = async (mastered: string[], skipped: string[]) => {
@@ -45,12 +63,41 @@ export default function GroupLessonScreen() {
         },
         { onConflict: 'user_id,group_name' },
       )
-    } catch { /* silent — best-effort */ }
+    } catch (err) { console.warn('[group-lesson] saveProgress failed:', err) }
   }
 
+  // Hydrate lesson store from saved DB progress on mount
   useEffect(() => {
-    if (words.length) startLesson(`group:${theme}`)
-  }, [theme, words.length])
+    if (!user || !theme || hydrated) return
+    // Wait until words are loaded (or confirmed empty)
+    if (loading) return
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('group_progress')
+          .select('words_mastered, words_skipped, completed')
+          .eq('user_id', user.id)
+          .eq('group_name', theme)
+          .maybeSingle()
+
+        const row = data as { words_mastered?: unknown; words_skipped?: unknown; completed?: boolean } | null
+        if (row && !row.completed) {
+          const mastered = wordsMasteredArray({ words_mastered: row.words_mastered as string[] } as never)
+          const skipped = Array.isArray(row.words_skipped) ? row.words_skipped as string[] : []
+          resumeLesson(`group:${theme}`, mastered, skipped)
+          const handled = new Set([...mastered, ...skipped])
+          const firstUnhandled = sortedWords.findIndex((w) => !handled.has(w.id))
+          setCurrentIndex(firstUnhandled >= 0 ? firstUnhandled : sortedWords.length)
+        } else {
+          startLesson(`group:${theme}`)
+        }
+      } catch {
+        startLesson(`group:${theme}`)
+      } finally {
+        setHydrated(true)
+      }
+    })()
+  }, [theme, user?.id, loading, words.length])
 
   // Pre-fetch translations for all words in this group
   const { profile } = useProfile()
@@ -70,7 +117,6 @@ export default function GroupLessonScreen() {
     haptics.success()
     soundEngine.play('wordRevealed')
     setCurrentIndex((i) => i + 1)
-    updateStreak(user.id).catch(() => {})
     void saveProgress([...wordsMastered, currentWord.id], wordsSkipped)
   }
 
@@ -87,7 +133,7 @@ export default function GroupLessonScreen() {
     if (idx >= 0) setCurrentIndex(idx)
   }
 
-  if (loading) {
+  if (loading || !hydrated) {
     return (
       <SafeAreaView style={styles.safe}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -136,9 +182,15 @@ export default function GroupLessonScreen() {
         ) : null}
       </View>
 
-      {!isComplete && sortedWords.length > 0 && !sortedWords[0]?.id.startsWith('proverb:') && (
-        <QueueStrip words={sortedWords} currentId={currentWord?.id ?? ''}
-          masteredIds={wordsMastered} skippedIds={wordsSkipped} onWordPress={handleWordSelect} />
+      {!isComplete && sortedWords.length > 0 && (
+        <QueueStrip
+          words={sortedWords}
+          currentId={currentWord?.id ?? ''}
+          masteredIds={wordsMastered}
+          skippedIds={wordsSkipped}
+          onWordPress={handleWordSelect}
+          getLabel={isProverb ? (w) => shortLabel(w.text) : undefined}
+        />
       )}
     </SafeAreaView>
   )

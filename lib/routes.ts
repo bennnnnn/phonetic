@@ -13,7 +13,13 @@ export const ROUTES = {
   GROUP_QUIZ: (theme: string) => `/group-quiz/${encodeURIComponent(theme)}`,
   GROUP_COMPLETE: (theme: string) => `/group-complete/${encodeURIComponent(theme)}`,
   SPLASH: '/(auth)/splash',
+  WELCOME: '/(auth)/welcome',
   LOGIN: '/(auth)/login',
   SIGNUP: '/(auth)/signup',
+  SIGNUP_EMAIL: '/(auth)/signup-email',
+  CONFIRM_EMAIL: '/(auth)/confirm-email',
+  RESET_PASSWORD: '/(auth)/reset-password',
   ONBOARDING: '/(auth)/onboarding',
+  PRIVACY: '/(auth)/privacy',
+  TERMS: '/(auth)/terms',
 }

@@ -55,8 +55,10 @@ if (loading) return <ScreenSkeleton />
 // Error
 if (error) return <ErrorState message={error.message} onRetry={refetch} />
 
-// Empty
-if (!data) return <EmptyState message="Nothing here yet" />
+// Empty — no shared EmptyState; use inline copy + CTA or a screen-local helper
+if (!data || (Array.isArray(data) && data.length === 0)) {
+  return <Text style={{ padding: 16 }}>Nothing here yet</Text>
+}
 
 // Happy path
 return <YourContent />
@@ -65,8 +67,8 @@ return <YourContent />
 ### 4. Use existing components
 - `<ScreenSkeleton />` from `/components/ui/Skeleton`
 - `<ErrorState />` from `/components/ui/ErrorState`
-- `<EmptyState />` from `/components/ui/EmptyState`
-- If these don't exist yet, create them as part of this task.
+- Empty states: implement inline or per-screen (there is no shared `EmptyState` component in `components/ui/`).
+- If Skeleton or ErrorState are missing, add them as part of this task.
 
 ### 5. Navigation
 ```typescript

@@ -55,7 +55,7 @@ To exercise these rights, email support@phonicsflow.app. We will respond within 
   },
   {
     title: '8. Third-Party Services',
-    body: 'We use the following third-party services: Supabase (database), ElevenLabs (text-to-speech audio generation), RevenueCat (subscription management). Each has its own privacy policy. We only share the minimum data required for these services to function.',
+    body: 'We use the following third-party services: Supabase (database), Google Cloud (text-to-speech for lesson audio and related features), RevenueCat (subscription management). Each has its own privacy policy. We only share the minimum data required for these services to function.',
   },
   {
     title: '9. Data Retention',

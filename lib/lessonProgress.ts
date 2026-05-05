@@ -4,8 +4,22 @@ export function progressForLesson(progress: UserProgress[], lessonId: string) {
   return progress.find((p) => p.lesson_id === lessonId)
 }
 
+/** Parse words_mastered into a string array regardless of storage format (array or JSON string). */
+export function wordsMasteredArray(p: UserProgress | undefined): string[] {
+  if (!p) return []
+  const m = p.words_mastered
+  if (Array.isArray(m)) return m
+  if (typeof m === 'string') {
+    try {
+      const parsed = JSON.parse(m)
+      return Array.isArray(parsed) ? parsed : []
+    } catch { return [] }
+  }
+  return []
+}
+
 /** Safely get the length of words_mastered — could be array or JSON string from DB */
-function wordsMasteredLength(p: UserProgress | undefined): number {
+export function wordsMasteredLength(p: UserProgress | undefined): number {
   if (!p) return 0
   const m = p.words_mastered
   if (Array.isArray(m)) return m.length
@@ -13,6 +27,11 @@ function wordsMasteredLength(p: UserProgress | undefined): number {
     try { return JSON.parse(m).length } catch { return 0 }
   }
   return 0
+}
+
+/** True if words_mastered has at least one entry (any storage format). */
+export function hasWordsMastered(p: UserProgress | undefined): boolean {
+  return wordsMasteredLength(p) > 0
 }
 
 /** Bar width: completed → 100%; else from mastered / wordGoal. */

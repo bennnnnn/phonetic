@@ -2,45 +2,9 @@ import { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import * as Contacts from 'expo-contacts'
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
+import { matchContactsAfterPermissionPrompt } from '@/lib/contactsFriends'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
-
-async function readAndMatchContacts(): Promise<number> {
-  const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.Emails],
-  })
-
-  const emails: string[] = []
-  for (const contact of data) {
-    for (const e of contact.emails ?? []) {
-      if (e.email) emails.push(e.email.toLowerCase())
-    }
-  }
-
-  if (emails.length === 0) return 0
-
-  // Server-side match against auth.users — no raw emails leak back to client
-  const { data: matches, error } = await supabase.rpc('find_users_by_emails', {
-    p_emails: emails,
-  })
-
-  if (error || !matches || matches.length === 0) return 0
-
-  const { user } = useAuthStore.getState()
-  if (!user) return 0
-
-  // Insert a friendship row for every matched user (ignore duplicates)
-  const rows = matches.map((m: { user_id: string }) => ({
-    referrer_id: user.id,
-    referred_id: m.user_id,
-  }))
-
-  await supabase.from('friendships').upsert(rows, { ignoreDuplicates: true })
-
-  return matches.length
-}
 
 export default function ContactsPermissionScreen() {
   const insets  = useSafeAreaInsets()
@@ -51,12 +15,10 @@ export default function ContactsPermissionScreen() {
   const handleEnable = async () => {
     setBusy(true)
     try {
-      const { status } = await Contacts.requestPermissionsAsync()
-      if (status === 'granted') {
-        await readAndMatchContacts()
-      }
-    } catch {
-      // Non-fatal — permission denied or read error; just continue
+      const { user } = useAuthStore.getState()
+      if (user) await matchContactsAfterPermissionPrompt(user.id)
+    } catch (err) {
+      console.warn('[contacts-permission] matching failed:', err)
     } finally {
       setBusy(false)
       proceed()

@@ -12,6 +12,7 @@ type SettingsStore = {
   largerText: boolean
   dailyGoalMinutes: 5 | 10 | 15 | 25
   nativeLanguage: string
+  onboardingComplete: boolean
   setSoundEnabled: (v: boolean) => void
   setHapticsEnabled: (v: boolean) => void
   setNotificationsEnabled: (v: boolean) => void
@@ -21,6 +22,7 @@ type SettingsStore = {
   setLargerText: (v: boolean) => void
   setDailyGoalMinutes: (v: 5 | 10 | 15 | 25) => void
   setNativeLanguage: (v: string) => void
+  setOnboardingComplete: () => void
 }
 
 const LEGACY_SPEED: Record<string, number> = { slow: 0.75, normal: 1.0, fast: 1.25 }
@@ -37,6 +39,7 @@ export const useSettingsStore = create<SettingsStore>()(
       largerText: false,
       dailyGoalMinutes: 10,
       nativeLanguage: '',
+      onboardingComplete: false,
       setSoundEnabled: (v) => set({ soundEnabled: v }),
       setHapticsEnabled: (v) => set({ hapticsEnabled: v }),
       setNotificationsEnabled: (v) => set({ notificationsEnabled: v }),
@@ -46,6 +49,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setLargerText: (v) => set({ largerText: v }),
       setDailyGoalMinutes: (v) => set({ dailyGoalMinutes: v }),
       setNativeLanguage: (v) => set({ nativeLanguage: v }),
+      setOnboardingComplete: () => set({ onboardingComplete: true }),
     }),
     {
       name: 'phonicsflow-settings',

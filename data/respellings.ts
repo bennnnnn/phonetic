@@ -160,11 +160,11 @@ export const PHONICS_RESPELLINGS: Record<string, string> = {
 
   // ── Silent letters ───────────────────────────────────────────────────────
   knee: 'nee',      knife: 'nyf',     know: 'noh',    knit: 'nit',
-  knot: 'not',      knight: 'nyt',    knack: 'nak',
+  knot: 'not',
   lamb: 'lam',      comb: 'kohm',     thumb: 'thum',  crumb: 'krum',
-  bomb: 'bom',      climb: 'klym',    dumb: 'dum',    numb: 'num',
+  bomb: 'bom',      dumb: 'dum',    numb: 'num',
   write: 'ryt',     wrong: 'rong',    wrist: 'rist',  wreck: 'rek',
-  wrap: 'rap',      wren: 'ren',
+  wren: 'ren',
   island: 'eye-lund', listen: 'lis-un', castle: 'kas-ul',
   whistle: 'wis-ul',  often: 'of-un',   fasten: 'fas-un',
 
@@ -181,7 +181,7 @@ export const PHONICS_RESPELLINGS: Record<string, string> = {
   friend: 'frend',    school: 'skool',  water: 'waw-ter',
   again: 'uh-gen',    always: 'awl-wayz', beautiful: 'byoo-tih-ful',
   said: 'sed',        says: 'sez',      come: 'kum',
-  some: 'sum',        done: 'dun',      one: 'wun',
+  some: 'sum',        one: 'wun',
   once: 'wuns',       two: 'too',       four: 'for',
   eight: 'ayt',       half: 'haf',      hour: 'ow-er',
   eye: 'eye',         buy: 'by',        by: 'by',

@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
 import { WORD_THEMES, IRREGULAR_VERB_GROUPS, HOMOPHONE_GROUPS } from '@/lib/practiceThemes'
 import { PROVERB_GROUPS } from '@/data/proverbs'
 import { IDIOM_GROUPS } from '@/data/idioms'
+import { PHRASAL_VERB_GROUPS } from '@/data/phrasalVerbs'
 import { HOMOPHONE_DEFINITIONS } from '@/data/homophones'
 import { WORD_PRONUNCIATIONS } from '@/data/vocabThemes'
 import { VERB_PRONUNCIATIONS } from '@/data/irregularVerbs'
@@ -11,139 +11,78 @@ import type { Word } from '@/lib/types'
 export function useGroupLesson(theme: string) {
   const [words, setWords] = useState<Word[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    const themeData = WORD_THEMES[theme]
-    const verbGroup = IRREGULAR_VERB_GROUPS[theme]
-    const homoGroup = HOMOPHONE_GROUPS[theme]
+  const load = useCallback(() => {
+    const themeData   = WORD_THEMES[theme]
+    const verbGroup   = IRREGULAR_VERB_GROUPS[theme]
+    const homoGroup   = HOMOPHONE_GROUPS[theme]
     const proverbData = PROVERB_GROUPS[theme]
-    const idiomData = IDIOM_GROUPS[theme]
+    const idiomData   = IDIOM_GROUPS[theme]
+    const phrasalData = PHRASAL_VERB_GROUPS[theme]
 
-    // — Proverbs: build from local data
+    let built: Word[] | null = null
+
     if (proverbData) {
-      const built: Word[] = proverbData.proverbs.map((p, i) => ({
-        id: `proverb:${theme}:${i}`,
-        text: p.text,
-        consonant: '',
-        pattern: '',
-        definition: p.meaning,
-        phoneme: '',
-        pronunciation: '',
-        audio_url: '',
-        slow_audio_url: '',
+      built = proverbData.proverbs.map((p, i) => ({
+        id: `proverb:${theme}:${i}`, text: p.text,
+        consonant: '', pattern: '', definition: p.meaning,
+        phoneme: '', pronunciation: '', audio_url: '', slow_audio_url: '',
       }))
-      setWords(built)
-      setLoading(false)
-      return
-    }
-
-    // — Irregular verbs: build from local data
-    if (verbGroup) {
-      const built: Word[] = verbGroup.verbs.map((text, i) => ({
-        id: `verb:${theme}:${text}`,
-        text,
-        consonant: '',
-        pattern: text,
+    } else if (verbGroup) {
+      built = verbGroup.verbs.map((text, i) => ({
+        id: `verb:${theme}:${text}`, text,
+        consonant: '', pattern: text,
         definition: verbGroup.past[i] || verbGroup.pastPart[i]
           ? `past: ${verbGroup.past[i] ?? ''} · past participle: ${verbGroup.pastPart[i] ?? ''}`
           : '',
-        phoneme: '',
-        pronunciation: VERB_PRONUNCIATIONS[text.toLowerCase()] ?? text,
-        audio_url: '',
-        slow_audio_url: '',
-        pastText: verbGroup.past[i] ?? '',
-        pastPart: verbGroup.pastPart[i] ?? '',
+        phoneme: '', pronunciation: VERB_PRONUNCIATIONS[text.toLowerCase()] ?? text,
+        audio_url: '', slow_audio_url: '',
+        pastText: verbGroup.past[i] ?? '', pastPart: verbGroup.pastPart[i] ?? '',
       }))
-      setWords(built)
-      setLoading(false)
-      return
-    }
-
-    // — Homophones: build from local data with per-word definitions
-    if (homoGroup) {
-      const built: Word[] = homoGroup.words.map((w) => {
+    } else if (homoGroup) {
+      built = homoGroup.words.map((w) => {
         const text = typeof w === 'string' ? w : w.text
-        const def = typeof w === 'string' ? '' : (w.definition ?? HOMOPHONE_DEFINITIONS[text.toLowerCase()] ?? '')
+        const def  = typeof w === 'string' ? '' : (w.definition ?? HOMOPHONE_DEFINITIONS[text.toLowerCase()] ?? '')
         return {
-          id: `homo:${theme}:${text}`,
-          text,
-          consonant: '',
-          pattern: text,
-          definition: def,
-          phoneme: '',
-          pronunciation: WORD_PRONUNCIATIONS[text.toLowerCase()] ?? text,
-          audio_url: '',
-          slow_audio_url: '',
+          id: `homo:${theme}:${text}`, text,
+          consonant: '', pattern: text, definition: def,
+          phoneme: '', pronunciation: WORD_PRONUNCIATIONS[text.toLowerCase()] ?? text,
+          audio_url: '', slow_audio_url: '',
         }
       })
-      setWords(built)
-      setLoading(false)
-      return
-    }
-
-    // — Idioms: build from local data
-    if (idiomData) {
-      const built: Word[] = idiomData.idioms.map((i, idx) => ({
-        id: `idiom:${theme}:${idx}`,
-        text: i.text,
-        consonant: '',
-        pattern: i.text,
-        definition: i.meaning,
-        phoneme: '',
-        pronunciation: '',
-        audio_url: '',
-        slow_audio_url: '',
+    } else if (idiomData) {
+      built = idiomData.idioms.map((item, idx) => ({
+        id: `idiom:${theme}:${idx}`, text: item.text,
+        consonant: '', pattern: item.text, definition: item.meaning,
+        phoneme: '', pronunciation: '', audio_url: '', slow_audio_url: '',
+        example: item.example,
       }))
-      setWords(built)
-      setLoading(false)
-      return
-    }
-
-    // — Vocab themes: build from local word data (no DB dependency)
-    if (themeData) {
-      const built: Word[] = themeData.words.map((entry) => {
+    } else if (phrasalData) {
+      built = phrasalData.verbs.map((v, idx) => ({
+        id: `phrasal:${theme}:${idx}`, text: v.text,
+        consonant: '', pattern: v.text, definition: v.definition,
+        phoneme: '', pronunciation: '', audio_url: '', slow_audio_url: '',
+        example: v.example,
+      }))
+    } else if (themeData) {
+      built = themeData.words.map((entry) => {
         const text = typeof entry === 'string' ? entry : entry.text
         const pron = typeof entry === 'string'
           ? (WORD_PRONUNCIATIONS[text.toLowerCase()] ?? text)
           : (entry.pron ?? WORD_PRONUNCIATIONS[text.toLowerCase()] ?? text)
         return {
-          id: `vocab:${theme}:${text}`,
-          text,
-          consonant: '',
-          pattern: text,
-          definition: '',
-          phoneme: '',
-          pronunciation: pron,
-          audio_url: '',
-          slow_audio_url: '',
+          id: `vocab:${theme}:${text}`, text,
+          consonant: '', pattern: text, definition: '',
+          phoneme: '', pronunciation: pron, audio_url: '', slow_audio_url: '',
         }
       })
-      setWords(built)
-      setLoading(false)
-      return
     }
 
-    // — Fallback: try Supabase (legacy support)
-    const themeWords: Array<string | { text: string }> = []
-    if (!themeWords.length) {
-      setWords([])
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    setError(null)
-    const wordTexts = themeWords.map((w: string | { text: string }) => (typeof w === 'string' ? w : w.text))
-    const { data, error: err } = await supabase
-      .from('words')
-      .select('id, text, consonant, pattern, phoneme, definition, audio_url, slow_audio_url')
-      .in('text', wordTexts)
-    if (err) setError(err.message)
-    else setWords((data as Word[]) ?? [])
+    setWords(built ?? [])
     setLoading(false)
   }, [theme])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { load() }, [load])
 
-  return { words, loading, error, refetch: load }
+  return { words, loading, error: null as string | null, refetch: load }
 }

@@ -2,21 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/store/authStore'
 import { writeCache, CACHE_TYPES } from '@/lib/offlineCache'
-
-/** Check if a words_mastered field has actual content (array or JSONB string with items). */
-function hasWords(wm: string[] | string | null | undefined): boolean {
-  if (!wm) return false
-  if (Array.isArray(wm)) return wm.length > 0
-  if (typeof wm === 'string') {
-    try {
-      const parsed = JSON.parse(wm)
-      return Array.isArray(parsed) && parsed.length > 0
-    } catch {
-      return false
-    }
-  }
-  return false
-}
+import { hasWordsMastered } from '@/lib/lessonProgress'
 
 export function starsFor(_score?: number): number {
   // Always 3 — the quiz ends only when users answer all correctly,

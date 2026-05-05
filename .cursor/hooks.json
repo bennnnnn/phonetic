@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "command": "node .cursor/hooks/skill-sync-reminder.js",
+        "matcher": "Write|StrReplace",
+        "timeout": 5
+      }
+    ]
+  }
+}

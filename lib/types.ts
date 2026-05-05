@@ -10,6 +10,8 @@ export type Word = {
   slow_audio_url: string
   pastText?: string
   pastPart?: string
+  /** Example sentence — used by phrasal verbs, idioms, etc. */
+  example?: string
 }
 
 export type WordFamily = {
@@ -55,4 +57,12 @@ export type UserProfile = {
 
 export type WordStatus = 'unseen' | 'mastered' | 'skipped'
 
-export type LeagueTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum' | 'Diamond'
+export type Friend = {
+  id: string
+  display_name: string
+  streak_days: number
+  total_xp: number
+  joined_at: string
+  lessons_completed_total?: number
+  lessons_completed_last_7d?: number
+}

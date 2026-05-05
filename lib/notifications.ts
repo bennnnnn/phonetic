@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 
 type NotificationType =
   | 'friend_joined'
+  | 'friend_pull_ahead'
   | 'level_up'
   | 'streak_milestone'
   | 'referral_milestone'

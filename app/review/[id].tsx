@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useLesson } from '@/hooks/useLesson'
 import WordRow from '@/components/review/WordRow'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
+import { ROUTES } from '@/lib/routes'
 import ErrorState from '@/components/ui/ErrorState'
 import type { Word } from '@/lib/types'
 
@@ -67,6 +68,14 @@ export default function ReviewScreen() {
         {words.map((word, i) => (
           <WordRow key={word.id} word={word} index={i} />
         ))}
+
+        <TouchableOpacity
+          style={styles.practiceBtn}
+          onPress={() => router.push(ROUTES.LESSON(id ?? ''))}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.practiceBtnText}>Practice again →</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   )
@@ -93,6 +102,12 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.primary },
 
   list: { padding: spacing.lg, gap: spacing.sm },
+
+  practiceBtn: {
+    backgroundColor: colors.primaryLight, borderRadius: radius.lg,
+    paddingVertical: 14, alignItems: 'center', marginTop: spacing.md,
+  },
+  practiceBtnText: { fontSize: fontSize.lg, fontWeight: '600', color: colors.primary },
 
   ruleCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,

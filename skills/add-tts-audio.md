@@ -1,203 +1,82 @@
-# Skill: Add TTS Audio (ElevenLabs)
+# Skill: Lesson audio — pre-generate, store, play
 
-Read this before adding any audio playback or generation to a component.
+Read this before adding **playback**, **batch generation**, or **new word/sentence audio** to the app.
 
----
+## Canonical approach (PhonicsFlow)
 
-## Architecture Overview
+1. **Generate each clip once** (CI, local script, or one-off job) using **Google Cloud TTS**, **Expo Speech in a tooling context**, or any provider you choose — **not** from the user’s phone during a normal lesson for static curriculum.
+2. **Upload** the file (e.g. MP3) to **Supabase Storage** (or your CDN bucket).
+3. **Persist public (or signed) URLs** on the row: e.g. `audio_url`, `slow_audio_url` on `words` / lesson content tables (`lib/types.ts`).
+4. **At runtime**, the app **plays the URL** first — fast, cheap, consistent. **`hooks/useAudio.ts`**: `play(url, fallbackText?)` uses `expo-av` when `url` is non-empty; on failure or missing URL it uses **`googleTts` + Expo Speech** as fallback (see implementation).
 
-```
-Request audio for word
-       ↓
-Check Supabase storage for cached URL
-       ↓
-Found? → Play directly from URL
-       ↓
-Not found? → Call ElevenLabs API → Store in Supabase → Play
-```
-
-Never call ElevenLabs from the client at runtime for pre-existing words.
-All lesson words are pre-generated via `/scripts/generate-audio.ts`.
-ElevenLabs is only called live for user-generated content (e.g. pronunciation practice).
+**Never** call paid TTS from the **client** for every tap on **fixed** lesson words. Batch generation belongs in **`scripts/`** (or a backend job) with a service key, not in `EXPO_PUBLIC_*` on the device.
 
 ---
 
-## ElevenLabs Client (/lib/elevenlabs.ts)
+## Architecture overview
+
+```
+Lesson UI needs audio for a word
+       ↓
+Row has audio_url (and slow_audio_url)?
+       ↓ yes
+useAudio.play(url) → expo-av streams from URL
+       ↓ fails or empty
+useAudio falls back to speakWithSettings(fallbackText)
+       → googleTts (if API key) else expo-speech
+```
+
+For **user-typed or one-off text** (e.g. pronunciation drill): you may **only** use runtime TTS, or **generate-on-first-use** then **upload + UPDATE** the row so the next play is from storage.
+
+---
+
+## Batch generation (outline)
+
+Typical steps in a Node script under `scripts/` (run with secrets in env, not shipped to the app binary):
+
+1. Select rows missing `audio_url` (or stale checksum).
+2. For each text + accent + speed variant, call your TTS API → `Buffer` / file.
+3. `supabase.storage.from('audio').upload(path, bytes, { contentType: 'audio/mpeg', upsert: true })`.
+4. `supabase.from('words').update({ audio_url: publicUrl, slow_audio_url: ... }).eq('id', id)`.
+
+Use stable object paths (e.g. `words/{id}/normal.mp3`) so regenerations overwrite cleanly. Document voice id / locale in the script or a small config file so regenerations stay consistent.
+
+---
+
+## Runtime playback (`hooks/useAudio.ts`)
+
+- **`play(url, fallbackText?)`**: If `url` is set, load and play with **expo-av**; `haptics.tap()` when enabled. On error, if `fallbackText` is provided, **`speakWithSettings`** runs (Google TTS → data URI, else **Expo Speech**).
+- **`stop()`**: Stops av sound and **Speech.stop()**.
+- **Session**: `playsInSilentModeIOS: true`, unload on unmount.
+
+Components should pass **stored URLs** from the lesson/word model whenever available, and pass **word text** as `fallbackText` so offline / missing-file cases still speak.
+
+---
+
+## UI integration pattern
 
 ```typescript
-const ELEVENLABS_BASE = 'https://api.elevenlabs.io/v1'
-const VOICE_ID_AMERICAN = 'EXAVITQu4vr4xnSDxMaL'   // Sarah — clear, warm
-const VOICE_ID_BRITISH  = 'onwK4e9ZLuTAKqWW03F9'   // Daniel — clear, neutral
-
-type GenerateAudioOptions = {
-  text: string
-  slow?: boolean                    // use lower speed for learners
-  accent?: 'american' | 'british'
-}
-
-export async function generateAudio(options: GenerateAudioOptions): Promise<ArrayBuffer> {
-  const { text, slow = false, accent = 'american' } = options
-  const voiceId = accent === 'british' ? VOICE_ID_BRITISH : VOICE_ID_AMERICAN
-
-  const response = await fetch(`${ELEVENLABS_BASE}/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': process.env.ELEVENLABS_API_KEY!,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text,
-      model_id: 'eleven_turbo_v2_5',
-      voice_settings: {
-        stability: 0.75,
-        similarity_boost: 0.85,
-        speed: slow ? 0.7 : 1.0,
-      },
-    }),
-  })
-
-  if (!response.ok) throw new Error(`ElevenLabs error: ${response.status}`)
-  return response.arrayBuffer()
-}
+// Prefer DB URLs; fallbackText enables TTS if URL missing or broken
+const { play, playing, loading } = useAudio()
+await play(word.audio_url, word.text)
 ```
 
----
-
-## Audio Playback Hook (/hooks/useAudio.ts)
-
-```typescript
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Audio } from 'expo-av'
-import * as Haptics from 'expo-haptics'
-
-type UseAudioReturn = {
-  playing: boolean
-  loading: boolean
-  error: string | null
-  play: (url: string) => Promise<void>
-  stop: () => Promise<void>
-}
-
-export function useAudio(): UseAudioReturn {
-  const soundRef = useRef<Audio.Sound | null>(null)
-  const [playing, setPlaying] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  // Configure audio session once
-  useEffect(() => {
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,         // play even when phone is silenced
-      shouldDuckAndroid: true,
-    })
-    return () => {
-      soundRef.current?.unloadAsync()     // always unload on unmount
-    }
-  }, [])
-
-  const play = useCallback(async (url: string) => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Unload previous sound
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync()
-        soundRef.current = null
-      }
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: true }
-      )
-      soundRef.current = sound
-      setPlaying(true)
-
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setPlaying(false)
-        }
-      })
-    } catch (err) {
-      setError('Could not play audio')
-      setPlaying(false)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  const stop = useCallback(async () => {
-    await soundRef.current?.stopAsync()
-    setPlaying(false)
-  }, [])
-
-  return { playing, loading, error, play, stop }
-}
-```
-
----
-
-## AudioButton Component (/components/lesson/AudioButton.tsx)
-
-```typescript
-import { Pressable, StyleSheet } from 'react-native'
-import Animated, { useSharedValue, withSpring } from 'react-native-reanimated'
-import { useAudio } from '@/hooks/useAudio'
-import { colors } from '@/lib/tokens'
-
-type Props = {
-  audioUrl: string
-  size?: 'sm' | 'md' | 'lg'
-  accessibilityLabel: string
-}
-
-export default function AudioButton({ audioUrl, size = 'md', accessibilityLabel }: Props) {
-  const { play, playing, loading } = useAudio()
-  const scale = useSharedValue(1)
-
-  const handlePress = async () => {
-    scale.value = withSpring(0.9, {}, () => { scale.value = withSpring(1) })
-    await play(audioUrl)
-  }
-
-  const buttonSize = { sm: 36, md: 48, lg: 60 }[size]
-
-  return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <Pressable
-        style={[styles.button, { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 }]}
-        onPress={handlePress}
-        disabled={loading}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityRole="button"
-        accessibilityState={{ busy: loading }}
-      >
-        {/* Speaker icon — use your icon library here */}
-      </Pressable>
-    </Animated.View>
-  )
-}
-
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-})
-```
+Slow variant: use `word.slow_audio_url` when the UI requests slow playback; if only one URL exists, you can still pass `fallbackText` for slow path via settings-aware TTS (see `useAudio` / `googleTts` accent + speed).
 
 ---
 
 ## Rules
 
-1. **Always call `sound.unloadAsync()` on unmount** — memory leak otherwise
-2. **Set `playsInSilentModeIOS: true`** — users expect a learning app to play audio even on silent
-3. **Pre-cache all lesson audio** — never call ElevenLabs API live during a lesson
-4. **Haptic feedback on play** — `ImpactFeedbackStyle.Light` feels satisfying
-5. **Slow audio URL** — always provide a slow version for learners; store as `slow_audio_url` in DB
-6. **Accent preference** — read from `userProfile.preferred_accent` before playing
-7. **One sound at a time** — always unload previous sound before loading new one
+1. **Static curriculum → URLs in DB** — generate once, store, play from storage; batch job updates rows.
+2. **No per-tap TTS for bulk words** — cost and latency; reserve runtime synthesis for gaps or dynamic phrases.
+3. **Always `unloadAsync`** previous `Audio.Sound` before loading another (already pattern in `useAudio`).
+4. **`playsInSilentModeIOS: true`** — learning apps should respect silent switch policy per product choice; current code plays in silent mode on iOS.
+5. **Two speeds** — keep `slow_audio_url` (or equivalent) for learners when the spec requires it.
+6. **Accent** — batch assets per `american` / `british` if you store both; runtime fallback uses `settingsStore.accent` + `audioSpeed`.
+7. **One utterance at a time** — `stop()` before starting unrelated audio if the UX requires hard cuts.
+
+---
+
+## Optional: other batch providers
+
+If you prefer **ElevenLabs** (or any vendor) for **offline generation only**, keep all API keys in **script / server** env. The app repo does **not** ship `lib/elevenlabs.ts` for runtime; implement generation inside `scripts/your-generate.ts` only, then upload and update URLs the same way as Google batch output.

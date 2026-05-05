@@ -15,9 +15,10 @@ import { supabase } from '@/lib/supabase'
 import { GROUP_NODES, IRREGULAR_VERB_NODES, HOMOPHONE_NODES } from '@/lib/practiceThemes'
 import { PROVERB_NODES } from '@/data/proverbs'
 import { IDIOM_NODES } from '@/data/idioms'
+import { PHRASAL_VERB_NODES } from '@/data/phrasalVerbs'
 import { ROUTES } from '@/lib/routes'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
-import { progressForLesson, familyProgressPct } from '@/lib/lessonProgress'
+import { progressForLesson, familyProgressPct, wordsMasteredArray, wordsMasteredLength, hasWordsMastered } from '@/lib/lessonProgress'
 import { levelFromTotalXp, xpProgressPercentInCurrentLevel, xpToReachNextLevel } from '@/lib/xpLevel'
 import type { UserProgress } from '@/lib/types'
 
@@ -86,6 +87,8 @@ export default function ProgressScreen() {
   const [verbsOpen, setVerbsOpen] = useState(false)
   const [homoOpen, setHomoOpen] = useState(false)
   const [proverbsOpen, setProverbsOpen] = useState(false)
+  const [idiomsOpen, setIdiomsOpen] = useState(false)
+  const [phrasalOpen, setPhrasalOpen] = useState(false)
 
   const { completedLessonIds, totalXP, progress, loading: progressLoading, error: progressError, refetch: refetchProgress } = useProgress()
   const { profile, error: profileError, refetch: refetchProfile } = useProfile()
@@ -119,13 +122,7 @@ export default function ProgressScreen() {
 
   const totalWordsMastered = useMemo(() => {
     const all = new Set<string>()
-    progress.forEach((p) => {
-      const wm = p.words_mastered
-      if (Array.isArray(wm)) wm.forEach((w) => all.add(w))
-      else if (typeof wm === 'string') {
-        try { JSON.parse(wm).forEach((w: string) => all.add(w)) } catch {}
-      }
-    })
+    progress.forEach((p) => wordsMasteredArray(p).forEach((w) => all.add(w)))
     return all.size
   }, [progress])
 
@@ -144,13 +141,7 @@ export default function ProgressScreen() {
 
   const wordsMasteredInPeriod = useMemo(() => {
     const set = new Set<string>()
-    filteredProgress.forEach((p) => {
-      const wm = p.words_mastered
-      if (Array.isArray(wm)) wm.forEach((w) => set.add(w))
-      else if (typeof wm === 'string') {
-        try { JSON.parse(wm).forEach((w: string) => set.add(w)) } catch {}
-      }
-    })
+    filteredProgress.forEach((p) => wordsMasteredArray(p).forEach((w) => set.add(w)))
     return set.size
   }, [filteredProgress])
 
@@ -209,39 +200,31 @@ export default function ProgressScreen() {
   const startedLessons = useMemo(() =>
     sortedLessons.filter((l) =>
       completedLessonIds.includes(l.id) ||
-      (() => {
-        const p = progressForLesson(progress, l.id)
-        if (!p) return false
-        const wm = p.words_mastered
-        if (Array.isArray(wm)) return wm.length > 0
-        if (typeof wm === 'string') {
-          try { return JSON.parse(wm).length > 0 } catch { return false }
-        }
-        return false
-      })()
+      hasWordsMastered(progressForLesson(progress, l.id))
     ),
   [sortedLessons, completedLessonIds, progress])
 
   // ── Progress: only groups that are completed OR in progress ───────────────
 
-  const groupProgressItems = useMemo(
-    () => {
-      const allNodes = [...GROUP_NODES, ...IRREGULAR_VERB_NODES, ...HOMOPHONE_NODES, ...PROVERB_NODES, ...IDIOM_NODES]
-      const startedSet = new Set(startedGroups)
-      return allNodes
-        .filter((node) => startedSet.has(node.id))
-        .map((node) => ({
-          ...node,
-          done: completedGroups.includes(node.id),
-        }))
-    },
+  const makeGroupItems = useCallback(
+    (nodes: Array<{ id: string; emoji: string; name: string; wordCount: number }>) =>
+      nodes
+        .filter((n) => startedGroups.includes(n.id))
+        .map((n) => ({ ...n, done: completedGroups.includes(n.id) })),
     [completedGroups, startedGroups],
   )
 
-  const vocabItems = useMemo(() => groupProgressItems.filter((g) => GROUP_NODES.some((n) => n.id === g.id)), [groupProgressItems])
-  const verbsItems = useMemo(() => groupProgressItems.filter((g) => IRREGULAR_VERB_NODES.some((n) => n.id === g.id)), [groupProgressItems])
-  const homoItems  = useMemo(() => groupProgressItems.filter((g) => HOMOPHONE_NODES.some((n) => n.id === g.id)), [groupProgressItems])
-  const proverbItems  = useMemo(() => groupProgressItems.filter((g) => PROVERB_NODES.some((n) => n.id === g.id)), [groupProgressItems])
+  const vocabItems   = useMemo(() => makeGroupItems(GROUP_NODES),          [makeGroupItems])
+  const verbsItems   = useMemo(() => makeGroupItems(IRREGULAR_VERB_NODES), [makeGroupItems])
+  const homoItems    = useMemo(() => makeGroupItems(HOMOPHONE_NODES),      [makeGroupItems])
+  const proverbItems = useMemo(() => makeGroupItems(PROVERB_NODES),        [makeGroupItems])
+  const idiomItems   = useMemo(() => makeGroupItems(IDIOM_NODES),          [makeGroupItems])
+  const phrasalItems = useMemo(() => makeGroupItems(PHRASAL_VERB_NODES),   [makeGroupItems])
+
+  const groupProgressItems = useMemo(
+    () => [...vocabItems, ...verbsItems, ...homoItems, ...proverbItems, ...idiomItems, ...phrasalItems],
+    [vocabItems, verbsItems, homoItems, proverbItems, idiomItems, phrasalItems],
+  )
 
   // ── Data plumbing ─────────────────────────────────────────────────────────
 
@@ -262,7 +245,7 @@ export default function ProgressScreen() {
   }, [refetchProgress, refetchProfile, refetchLessons, refetchGroups])
 
   const dataError       = progressError ?? profileError
-  const hasAnyProgress  = completedLessonIds.length > 0 || totalWordsMastered > 0 || completedGroups.length > 0 || groupProgressItems.length > 0 || proverbItems.length > 0
+  const hasAnyProgress  = completedLessonIds.length > 0 || totalWordsMastered > 0 || completedGroups.length > 0 || groupProgressItems.length > 0
   const periodLabel     = period === 'week' ? 'this week' : period === 'month' ? 'this month' : 'all time'
 
   return (
@@ -520,6 +503,62 @@ export default function ProgressScreen() {
           </ProgressSection>
         )}
 
+        {/* Idioms — collapsible */}
+        {idiomItems.length > 0 && (
+          <ProgressSection title="Idioms" emoji="💡" open={idiomsOpen} onToggle={() => setIdiomsOpen((p) => !p)}>
+            {idiomItems.map((g, i) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.itemRow, i < idiomItems.length - 1 && styles.itemRowBorder]}
+                onPress={() => router.push(g.done ? ROUTES.GROUP_REVIEW(g.id) : ROUTES.GROUP_LESSON(g.id))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                <View style={styles.itemMeta}>
+                  <View style={styles.itemNameRow}>
+                    <Text style={styles.itemName}>{g.name}</Text>
+                    <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
+                      {g.done ? '✓ done' : `${g.wordCount} idioms`}
+                    </Text>
+                  </View>
+                  <View style={styles.itemTrack}>
+                    <View style={[styles.itemFill, g.done && styles.itemFillDone, { width: g.done ? '100%' : '0%' }]} />
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
+              </TouchableOpacity>
+            ))}
+          </ProgressSection>
+        )}
+
+        {/* Phrasal Verbs — collapsible */}
+        {phrasalItems.length > 0 && (
+          <ProgressSection title="Phrasal Verbs" emoji="🔗" open={phrasalOpen} onToggle={() => setPhrasalOpen((p) => !p)}>
+            {phrasalItems.map((g, i) => (
+              <TouchableOpacity
+                key={g.id}
+                style={[styles.itemRow, i < phrasalItems.length - 1 && styles.itemRowBorder]}
+                onPress={() => router.push(g.done ? ROUTES.GROUP_REVIEW(g.id) : ROUTES.GROUP_LESSON(g.id))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.itemEmoji}>{g.emoji}</Text>
+                <View style={styles.itemMeta}>
+                  <View style={styles.itemNameRow}>
+                    <Text style={styles.itemName}>{g.name}</Text>
+                    <Text style={[g.done ? styles.itemPctDone : styles.itemPct]}>
+                      {g.done ? '✓ done' : `${g.wordCount} verbs`}
+                    </Text>
+                  </View>
+                  <View style={styles.itemTrack}>
+                    <View style={[styles.itemFill, g.done && styles.itemFillDone, { width: g.done ? '100%' : '0%' }]} />
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={14} color={colors.textHint} />
+              </TouchableOpacity>
+            ))}
+          </ProgressSection>
+        )}
+
         {/* Empty state */}
         {!progressLoading && !hasAnyProgress && (
           <View style={styles.emptyCard}>
@@ -574,7 +613,7 @@ const styles = StyleSheet.create({
   },
   streakHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   streakNum:    { color: '#fff', fontSize: 28, fontWeight: '700', lineHeight: 32 },
-  streakLabel:  { color: '#9FE1CB', fontSize: fontSize.md },
+  streakLabel:  { color: colors.primaryTint, fontSize: fontSize.md },
   pbBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: radius.full,
     paddingVertical: 4, paddingHorizontal: 11,
@@ -590,7 +629,7 @@ const styles = StyleSheet.create({
   dayDotDone:   { backgroundColor: colors.surface },
   dayDotToday:  { borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
   check:        { fontSize: 11, fontWeight: '700', color: colors.primary },
-  dayLabel:     { fontSize: 9, color: '#9FE1CB' },
+  dayLabel:     { fontSize: 9, color: colors.primaryTint },
   dayLabelToday: { color: '#fff', fontWeight: '600' },
 
   // Stats grid

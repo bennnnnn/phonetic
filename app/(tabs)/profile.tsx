@@ -12,6 +12,7 @@ import { useProgress } from '@/hooks/useProgress'
 import { useSubscription } from '@/hooks/useSubscription'
 import { useSettingsStore } from '@/store/settingsStore'
 import { colors, spacing, radius, fontSize } from '@/lib/tokens'
+import { wordsMasteredArray } from '@/lib/lessonProgress'
 import { supabase } from '@/lib/supabase'
 import { LANGUAGES, languageByCode } from '@/data'
 
@@ -175,13 +176,7 @@ export default function ProfileScreen() {
 
   const wordsCount = useMemo(() => {
     const set = new Set<string>()
-    progress.forEach((p) => {
-      const wm = p.words_mastered
-      if (Array.isArray(wm)) wm.forEach((w) => set.add(w))
-      else if (typeof wm === 'string') {
-        try { JSON.parse(wm).forEach((w: string) => set.add(w)) } catch {}
-      }
-    })
+    progress.forEach((p) => wordsMasteredArray(p).forEach((w) => set.add(w)))
     return set.size
   }, [progress])
 
@@ -656,11 +651,10 @@ export default function ProfileScreen() {
                 onPress={async () => {
                   try {
                     const { Share, Platform } = await import('react-native')
-                    const Linking = await import('expo-linking')
                     const { data } = await supabase.from('user_profiles').select('referral_code').eq('id', user?.id).single()
                     const code = (data as { referral_code?: string } | null)?.referral_code
                     if (!code) return
-                    const inviteLink = Linking.default.createURL('/signup', { queryParams: { ref: code } })
+                    const inviteLink = `phonicsflow://signup?ref=${code}`
                     await Share.share({
                       message: `Hey! I've been using PhonicsFlow to learn English phonics 📚\n\nDownload it using my invite link so we can study together 🙌\n\n👉 ${inviteLink}`,
                       url: inviteLink,

@@ -13,6 +13,7 @@ import { useProfile } from '@/hooks/useProfile'
 import { useAuthStore } from '@/store/authStore'
 import { supabase } from '@/lib/supabase'
 import { pushNotification } from '@/lib/notifications'
+import { updateStreak } from '@/lib/streak'
 import ConfettiBurst from '@/components/celebrations/ConfettiBurst'
 import { Star } from '@/components/celebrations/CompleteShared'
 import { haptics } from '@/lib/haptics'
@@ -23,7 +24,7 @@ import { colors, spacing, radius, fontSize } from '@/lib/tokens'
 export default function CompleteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { lesson } = useLesson(id)
-  const { wordsMastered, resetLesson } = useLessonStore()
+  const { wordsMastered, quizScore, quizTotal, resetLesson } = useLessonStore()
   const { saveProgress } = useSaveProgress()
   const { profile } = useProfile()
   const { user } = useAuthStore()
@@ -32,6 +33,8 @@ export default function CompleteScreen() {
   const wordsMasteredCount = wordsMastered.length
   const streakDays = profile?.streak_days ?? 0
   const xpEarned = Math.max(10, wordsMasteredCount * 5 + 25)
+  const quizPct = quizTotal > 0 ? Math.round((quizScore / quizTotal) * 100) : 100
+  const starCount = quizPct >= 90 ? 3 : quizPct >= 70 ? 2 : 1
 
   // Animations
   const cardTranslateY = useSharedValue(300)
@@ -49,11 +52,12 @@ export default function CompleteScreen() {
       saved.current = true
       void saveProgress({
         lessonId: id,
-        score: 100,
+        score: quizPct,
         xpEarned,
         wordsMastered,
         wordsSkipped: [],
       })
+      try { void updateStreak(user!.id) } catch {}
     }
 
     haptics.celebrate()
@@ -109,15 +113,15 @@ export default function CompleteScreen() {
         <Text style={styles.patternSubtitle}>{lesson?.title ?? 'The -ake pattern'}</Text>
 
         <View style={styles.stars}>
-          <Star filled={true} delay={900} />
-          <Star filled={true} delay={1100} />
-          <Star filled={true} delay={1300} />
+          <Star filled={starCount >= 1} delay={900} />
+          <Star filled={starCount >= 2} delay={1100} />
+          <Star filled={starCount >= 3} delay={1300} />
         </View>
       </View>
 
       <Animated.View style={[styles.bottomCard, cardStyle]}>
         <Animated.View style={[styles.scoreCircle, scoreStyle]}>
-          <Text style={styles.scoreNum}>100</Text>
+          <Text style={styles.scoreNum}>{quizPct}</Text>
           <Text style={styles.scorePct}>%</Text>
         </Animated.View>
 

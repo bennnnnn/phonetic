@@ -84,7 +84,6 @@ export const SILENT_LETTERS: Record<string, SilentLetter[]> = {
   // Silent L
   half:     [{ index: 2, letter: 'l' }],
   calf:     [{ index: 2, letter: 'l' }],
-  half:     [{ index: 2, letter: 'l' }],
   talk:     [{ index: 1, letter: 'l' }],
   walk:     [{ index: 1, letter: 'l' }],
   could:    [{ index: 1, letter: 'l' }],
